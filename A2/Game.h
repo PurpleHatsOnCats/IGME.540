@@ -2,6 +2,9 @@
 
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <memory>
+#include <vector>
+#include "Mesh.h"
 
 class Game
 {
@@ -42,5 +45,7 @@ private:
 	float backgroundColor[4];
 	bool showDemo;
 	int sliderValue = 0;
+
+	std::vector<std::shared_ptr<Mesh>> shapes;
 };
 
