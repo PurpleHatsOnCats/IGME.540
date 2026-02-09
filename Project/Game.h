@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include "Mesh.h"
+#include "BufferStructs.h"
 
 class Game
 {
@@ -45,7 +46,9 @@ private:
 	float backgroundColor[4];
 	bool showDemo;
 	int sliderValue = 0;
+	VertexShaderData vertexShaderData;
 
 	std::vector<std::shared_ptr<Mesh>> shapes;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> constBuffer;
 };
 

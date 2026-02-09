@@ -63,6 +63,19 @@ Game::Game()
 		Graphics::Context->VSSetShader(vertexShader.Get(), 0, 0);
 		Graphics::Context->PSSetShader(pixelShader.Get(), 0, 0);
 	}
+
+	// Create constant buffer
+	D3D11_BUFFER_DESC cbDesc = {}; // Sets struct to all zeros
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.ByteWidth = (sizeof(VertexShaderData)+15)/ 16 * 16; // Must be a multiple of 16
+	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	Graphics::Device->CreateBuffer(&cbDesc, 0, constBuffer.GetAddressOf());
+	Graphics::Context->VSSetConstantBuffers(0, 1, constBuffer.GetAddressOf());
+
+	// Constant buffer data
+	vertexShaderData.colorTint = DirectX::XMFLOAT4(0.5f, 1.0f, 0.5f, 1.0f);
+	vertexShaderData.offset = DirectX::XMFLOAT3(0.2f, 0.0f, 0.0f);
 }
 
 
@@ -268,6 +281,19 @@ void Game::Update(float deltaTime, float totalTime)
 		}
 		ImGui::TreePop();
 	}
+	// Create new data for constBuffer
+	if (ImGui::TreeNode("Constant Buffers")) {
+		ImGui::Text("VertexDataBuffer");
+		float* colorTint = new float[4]{ vertexShaderData.colorTint.x, vertexShaderData.colorTint.y, vertexShaderData.colorTint.z, vertexShaderData.colorTint.w };
+		float* offset = new float[3] { vertexShaderData.offset.x, vertexShaderData.offset.y, vertexShaderData.offset.z};
+		ImGui::SliderFloat3("Color Tint: ", colorTint, 0.0f, 2.0f);
+		ImGui::SliderFloat3("Offset: ", offset, -1.0f, 1.0f);
+		vertexShaderData.colorTint = DirectX::XMFLOAT4(colorTint);
+		vertexShaderData.offset = DirectX::XMFLOAT3(offset);
+		delete[] colorTint;
+		delete[] offset;
+		ImGui::TreePop();
+	}
 	ImGui::End();
 }
 
@@ -285,6 +311,14 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	backgroundColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
+
+	// Copy CPU constBuffer to GPU constBuffer
+	D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
+	Graphics::Context->Map(constBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
+
+	memcpy(mappedBuffer.pData, &vertexShaderData, sizeof(vertexShaderData)); // Copy data from CPU to GPU
+
+	Graphics::Context->Unmap(constBuffer.Get(), 0); // Unlocks GPU buffer
 
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
