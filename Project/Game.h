@@ -6,6 +6,7 @@
 #include <vector>
 #include "Mesh.h"
 #include "BufferStructs.h"
+#include "GameEntity.h"
 
 class Game
 {
@@ -49,6 +50,7 @@ private:
 	VertexShaderData vertexShaderData;
 
 	std::vector<std::shared_ptr<Mesh>> shapes;
+	std::vector<std::shared_ptr<GameEntity>> gameEntities;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> constBuffer;
 };
 

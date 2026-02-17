@@ -75,7 +75,7 @@ Game::Game()
 
 	// Constant buffer data
 	vertexShaderData.colorTint = DirectX::XMFLOAT4(0.5f, 1.0f, 0.5f, 1.0f);
-	vertexShaderData.offset = DirectX::XMFLOAT3(0.2f, 0.0f, 0.0f);
+	vertexShaderData.world = DirectX::XMFLOAT4X4();
 }
 
 
@@ -189,21 +189,21 @@ void Game::CreateGeometry()
 	// Rectangle
 	Vertex vertices2[] =
 	{
-		{ XMFLOAT3(+0.8f, +0.9f, +0.0f), red },
-		{ XMFLOAT3(+0.8f, +0.5f, +0.0f), green },
-		{ XMFLOAT3(-0.3f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(-0.3f, +0.9f, +0.0f), green },
+		{ XMFLOAT3(+0.5f, +0.5f, +0.0f), red },
+		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), green },
+		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), red },
+		{ XMFLOAT3(-0.5f, +0.5f, +0.0f), green },
 	};
 	unsigned int indices2[] = { 0, 1, 2, 2, 3, 0 };
 
 	// Pentagon
 	Vertex vertices3[] =
 	{
-		{ XMFLOAT3(-1.0f, +0.0f, +0.0f), red },
-		{ XMFLOAT3(-0.8f, +0.5f, +0.0f), green },
-		{ XMFLOAT3(-0.6f, +0.0f, +0.0f), blue },
-		{ XMFLOAT3(-0.7f, -0.5f, +0.0f), red },
-		{ XMFLOAT3(-0.9f, -0.5f, +0.0f), blue },
+		{ XMFLOAT3(-0.3f, +0.0f, +0.0f), red },
+		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), green },
+		{ XMFLOAT3(+0.3f, +0.0f, +0.0f), blue },
+		{ XMFLOAT3(+0.15f, -0.5f, +0.0f), red },
+		{ XMFLOAT3(-0.15f, -0.5f, +0.0f), blue },
 	};
 	unsigned int indices3[] = { 0, 1, 2, 0, 2, 3, 0, 3, 4};
 	
@@ -211,6 +211,11 @@ void Game::CreateGeometry()
 	shapes.push_back(std::make_shared<Mesh>("Rectangle", vertices2, (unsigned int)ARRAYSIZE(vertices2), indices2, (unsigned int)ARRAYSIZE(indices2)));
 	shapes.push_back(std::make_shared<Mesh>("Pentagon", vertices3, (unsigned int)ARRAYSIZE(vertices3), indices3, (unsigned int)ARRAYSIZE(indices3)));
 
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(0), "Entity 0"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(0), "Entity 1"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(0), "Entity 2"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(1), "Entity 3"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(2), "Entity 4"));
 }
 
 
@@ -235,66 +240,27 @@ void Game::Update(float deltaTime, float totalTime)
 
 	BuildUI(deltaTime);
 	
-	ImGui::Begin("My first window");
-	if (ImGui::TreeNode("Window data")) {
-		ImGui::Text("Fps: %f", ImGui::GetIO().Framerate);
-		ImGui::Text("Window dimensions: %i x %i", Window::Width(), Window::Height());
-		ImGui::ColorEdit4("Background color", backgroundColor);
-		ImGui::Checkbox("Show demo window", &showDemo);
-
-		const char* items[] = {"Apple","Banana","Orange","Tomatoe"};
-		static int item_selected_idx = 0;
-		if (ImGui::BeginCombo("Favorite fruit", items[item_selected_idx])) {
-			for (int n = 0; n < IM_COUNTOF(items); n++)
-			{
-				const bool is_selected = (item_selected_idx == n);
-				if (ImGui::Selectable(items[n], is_selected))
-					item_selected_idx = n;
-
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-				if (is_selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndCombo();
+	// Move game entities
+	for (unsigned int i = 0; i < gameEntities.size(); i++) {
+		switch (i) {
+		case 0: gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime), (float)sin(totalTime), 0);
+			gameEntities.at(i)->GetTransform()->Rotate(0, 0, deltaTime * 2.0f);
+			break;
+		case 1: gameEntities.at(i)->GetTransform()->Rotate(0, 0, deltaTime*2.0f);
+			break;
+		case 2: gameEntities.at(i)->GetTransform()->Scale((1.0f - (0.1f*deltaTime)), 1, 1);
+			gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime)/2.0f, 0, 0);
+			break;
+		case 3: gameEntities.at(i)->GetTransform()->MoveAbsolute(0.1f * deltaTime, 0.1f * deltaTime, 0.0f);
+			gameEntities.at(i)->GetTransform()->Scale((1.0f + (0.2f * deltaTime)), (1.0f - (0.2f * deltaTime)), 1.0f);
+			gameEntities.at(i)->GetTransform()->Rotate(0.1f * deltaTime, 0.1f * deltaTime, 0.0f);
+			break;
+		case 4: gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime * 5.0f), (float)sin(totalTime), 0);
+			break;
+		default:break;
 		}
-
-		ImGui::TextColored(ImVec4(backgroundColor[0], backgroundColor[1], backgroundColor[2], 255), "This is the background color!");
-		ImGui::VSliderInt("##1", ImVec2(18, 160), &sliderValue, 0, 5);
-		ImGui::SameLine();
-		ImGui::VSliderInt("##2", ImVec2(18, 160), &sliderValue, 0, 5);
-		ImGui::SameLine();
-		ImGui::VSliderInt("##3", ImVec2(18, 160), &sliderValue, 0, 5);
-		ImGui::SameLine();
-		ImGui::SliderInt("##4", &sliderValue, 0, 5);
-		ImGui::SliderInt("##5",&sliderValue,0,5);
-		ImGui::SliderInt("##6", &sliderValue, 0, 5);
-		ImGui::TreePop();
+		
 	}
-	if (ImGui::TreeNode("Meshes")) {
-		for (unsigned int i = 0; i < shapes.size(); i++) {
-			if (ImGui::TreeNode(shapes.at(i).get()->GetName())) {
-				ImGui::Text("Triangles: %i",(shapes.at(i).get()->GetIndexCount()/3));
-				ImGui::Text("Vertices: %i", shapes.at(i).get()->GetVertexCount());
-				ImGui::Text("Indices: %i", shapes.at(i).get()->GetIndexCount());
-				ImGui::TreePop();
-			}
-		}
-		ImGui::TreePop();
-	}
-	// Create new data for constBuffer
-	if (ImGui::TreeNode("Constant Buffers")) {
-		ImGui::Text("VertexDataBuffer");
-		float* colorTint = new float[4]{ vertexShaderData.colorTint.x, vertexShaderData.colorTint.y, vertexShaderData.colorTint.z, vertexShaderData.colorTint.w };
-		float* offset = new float[3] { vertexShaderData.offset.x, vertexShaderData.offset.y, vertexShaderData.offset.z};
-		ImGui::SliderFloat3("Color Tint: ", colorTint, 0.0f, 2.0f);
-		ImGui::SliderFloat3("Offset: ", offset, -1.0f, 1.0f);
-		vertexShaderData.colorTint = DirectX::XMFLOAT4(colorTint);
-		vertexShaderData.offset = DirectX::XMFLOAT3(offset);
-		delete[] colorTint;
-		delete[] offset;
-		ImGui::TreePop();
-	}
-	ImGui::End();
 }
 
 
@@ -312,20 +278,21 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
-	// Copy CPU constBuffer to GPU constBuffer
-	D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
-	Graphics::Context->Map(constBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
-
-	memcpy(mappedBuffer.pData, &vertexShaderData, sizeof(vertexShaderData)); // Copy data from CPU to GPU
-
-	Graphics::Context->Unmap(constBuffer.Get(), 0); // Unlocks GPU buffer
-
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
-		for (unsigned int i = 0; i < shapes.size(); i++) {
-			shapes.at(i).get()->Draw();
+		for (unsigned int i = 0; i < gameEntities.size(); i++) {
+
+			// Copy CPU constBuffer to GPU constBuffer
+			D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
+			Graphics::Context->Map(constBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
+			vertexShaderData.world = gameEntities.at(i)->GetTransform()->GetWorldMatrix();
+			memcpy(mappedBuffer.pData, &vertexShaderData, sizeof(vertexShaderData)); // Copy data from CPU to GPU
+
+			Graphics::Context->Unmap(constBuffer.Get(), 0); // Unlocks GPU buffer
+
+			gameEntities.at(i)->Draw();
 		}
 
 		ImGui::Render(); // Turns this frame’s UI into renderable triangles
@@ -367,6 +334,75 @@ void Game::BuildUI(float deltaTime) {
 	// Show the demo window
 	if(showDemo)
 		ImGui::ShowDemoWindow();
+
+	// Custom Window
+	ImGui::Begin("My first window");
+	if (ImGui::TreeNode("Window data")) {
+		ImGui::Text("Fps: %f", ImGui::GetIO().Framerate);
+		ImGui::Text("Window dimensions: %i x %i", Window::Width(), Window::Height());
+		ImGui::ColorEdit4("Background color", backgroundColor);
+		ImGui::Checkbox("Show demo window", &showDemo);
+
+		const char* items[] = { "Apple","Banana","Orange","Tomatoe" };
+		static int item_selected_idx = 0;
+		if (ImGui::BeginCombo("Favorite fruit", items[item_selected_idx])) {
+			for (int n = 0; n < IM_COUNTOF(items); n++)
+			{
+				const bool is_selected = (item_selected_idx == n);
+				if (ImGui::Selectable(items[n], is_selected))
+					item_selected_idx = n;
+
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+
+		ImGui::TextColored(ImVec4(backgroundColor[0], backgroundColor[1], backgroundColor[2], 255), "This is the background color!");
+		ImGui::VSliderInt("##1", ImVec2(18, 160), &sliderValue, 0, 5);
+		ImGui::SameLine();
+		ImGui::VSliderInt("##2", ImVec2(18, 160), &sliderValue, 0, 5);
+		ImGui::SameLine();
+		ImGui::VSliderInt("##3", ImVec2(18, 160), &sliderValue, 0, 5);
+		ImGui::SameLine();
+		ImGui::SliderInt("##4", &sliderValue, 0, 5);
+		ImGui::SliderInt("##5", &sliderValue, 0, 5);
+		ImGui::SliderInt("##6", &sliderValue, 0, 5);
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNode("Meshes")) {
+		for (unsigned int i = 0; i < shapes.size(); i++) {
+			if (ImGui::TreeNode(shapes.at(i)->GetName())) {
+				ImGui::Text("Triangles: %i", (shapes.at(i)->GetIndexCount() / 3));
+				ImGui::Text("Vertices: %i", shapes.at(i)->GetVertexCount());
+				ImGui::Text("Indices: %i", shapes.at(i)->GetIndexCount());
+				ImGui::TreePop();
+			}
+		}
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNode("Game Entities")) {
+		for (unsigned int i = 0; i < gameEntities.size(); i++) {
+			if (ImGui::TreeNode(gameEntities.at(i)->GetName())) {
+				XMFLOAT3 position = gameEntities.at(i)->GetTransform()->GetPosition();
+				ImGui::DragFloat3("Position", (float*) & position, 0.01f);
+				gameEntities.at(i)->GetTransform()->SetPosition(position);
+				
+				XMFLOAT3 rotation = gameEntities.at(i)->GetTransform()->GetPitchYawRoll();
+				ImGui::DragFloat3("Rotation", (float*)&rotation, 0.01f);
+				gameEntities.at(i)->GetTransform()->SetRotation(rotation);
+
+				XMFLOAT3 scale = gameEntities.at(i)->GetTransform()->GetScale();
+				ImGui::DragFloat3("Scale", (float*)&scale, 0.01f);
+				gameEntities.at(i)->GetTransform()->SetScale(scale);
+
+				ImGui::TreePop();
+			}
+		}
+		ImGui::TreePop();
+	}
+	ImGui::End();
 }
 
 
