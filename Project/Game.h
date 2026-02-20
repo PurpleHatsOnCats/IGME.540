@@ -7,6 +7,7 @@
 #include "Mesh.h"
 #include "BufferStructs.h"
 #include "GameEntity.h"
+#include "Camera.h"
 
 class Game
 {
@@ -51,6 +52,9 @@ private:
 
 	std::vector<std::shared_ptr<Mesh>> shapes;
 	std::vector<std::shared_ptr<GameEntity>> gameEntities;
+	std::vector<std::shared_ptr<Camera>> cameras;
+	int selectedCamera = 0;
+
 	Microsoft::WRL::ComPtr<ID3D11Buffer> constBuffer;
 };
 

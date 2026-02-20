@@ -10,6 +10,10 @@ private:
 	XMFLOAT4X4 world;
 	XMFLOAT4X4 worldInverseTranspose;
 	bool isWorldDirty;
+	XMFLOAT3 right;
+	XMFLOAT3 up;
+	XMFLOAT3 forward;
+	void UpdateDirections();
 public:
 	Transform();
 
@@ -22,11 +26,14 @@ public:
 	void SetScale(XMFLOAT3 scale);
 
 	// Getters 
-	DirectX::XMFLOAT3 GetPosition();
-	DirectX::XMFLOAT3 GetPitchYawRoll();
-	DirectX::XMFLOAT3 GetScale();
-	DirectX::XMFLOAT4X4 GetWorldMatrix();
-	DirectX::XMFLOAT4X4 GetWorldInverseTransposeMatrix();
+	XMFLOAT3 GetPosition();
+	XMFLOAT3 GetPitchYawRoll();
+	XMFLOAT3 GetScale();
+	XMFLOAT4X4 GetWorldMatrix();
+	XMFLOAT4X4 GetWorldInverseTransposeMatrix();
+	XMFLOAT3 GetRight();
+	XMFLOAT3 GetUp();
+	XMFLOAT3 GetForward();
 
 	// Transformers
 	void MoveAbsolute(float x, float y, float z);
@@ -35,6 +42,8 @@ public:
 	void Rotate(DirectX::XMFLOAT3 rotation);
 	void Scale(float x, float y, float z);
 	void Scale(DirectX::XMFLOAT3 scale);
+	void MoveRelative(float x, float y, float z);
+	void MoveRelative(XMFLOAT3 offset);
 
 };
 

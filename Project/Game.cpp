@@ -76,6 +76,11 @@ Game::Game()
 	// Constant buffer data
 	vertexShaderData.colorTint = DirectX::XMFLOAT4(0.5f, 1.0f, 0.5f, 1.0f);
 	vertexShaderData.world = DirectX::XMFLOAT4X4();
+
+	// Create Cameras
+	cameras = std::vector<std::shared_ptr<Camera>>();
+	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-1)));
+	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(1,1,-1)));
 }
 
 
@@ -225,7 +230,9 @@ void Game::CreateGeometry()
 // --------------------------------------------------------
 void Game::OnResize()
 {
-	
+	for (unsigned int i = 0; i < cameras.size(); i++) {
+		cameras[i]->UpdateProjectionMatrix(Window::AspectRatio());
+	}
 }
 
 
@@ -246,7 +253,7 @@ void Game::Update(float deltaTime, float totalTime)
 		case 0: gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime), (float)sin(totalTime), 0);
 			gameEntities.at(i)->GetTransform()->Rotate(0, 0, deltaTime * 2.0f);
 			break;
-		case 1: gameEntities.at(i)->GetTransform()->Rotate(0, 0, deltaTime*2.0f);
+		case 1: gameEntities.at(i)->GetTransform()->Rotate(0, 0, deltaTime * 2.0f);
 			break;
 		case 2: gameEntities.at(i)->GetTransform()->Scale((1.0f - (0.1f*deltaTime)), 1, 1);
 			gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime)/2.0f, 0, 0);
@@ -261,6 +268,9 @@ void Game::Update(float deltaTime, float totalTime)
 		}
 		
 	}
+
+	// Update Camera
+	cameras[selectedCamera]->Update(deltaTime);
 }
 
 
@@ -276,6 +286,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Clear the back buffer (erase what's on screen) and depth buffer
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	backgroundColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+		vertexShaderData.view = cameras[selectedCamera]->GetViewMatrix();
+		vertexShaderData.projection = cameras[selectedCamera]->GetProjectionMatrix();
 	}
 
 	// DRAW geometry
