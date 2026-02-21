@@ -79,8 +79,9 @@ Game::Game()
 
 	// Create Cameras
 	cameras = std::vector<std::shared_ptr<Camera>>();
-	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-1)));
-	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(1,1,-1)));
+	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-1), XMConvertToRadians(90.0f), 0.01f, 100.0f, "Main Camera"));
+	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(-2,2,-3), XMConvertToRadians(45.0f), 0.01f, 100.0f, "Second Camera"));
+	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
 }
 
 
@@ -266,7 +267,6 @@ void Game::Update(float deltaTime, float totalTime)
 			break;
 		default:break;
 		}
-		
 	}
 
 	// Update Camera
@@ -344,7 +344,7 @@ void Game::BuildUI(float deltaTime) {
 	Input::SetMouseCapture(io.WantCaptureMouse);
 
 	// Show the demo window
-	if(showDemo)
+	if (showDemo)
 		ImGui::ShowDemoWindow();
 
 	// Custom Window
@@ -398,9 +398,9 @@ void Game::BuildUI(float deltaTime) {
 		for (unsigned int i = 0; i < gameEntities.size(); i++) {
 			if (ImGui::TreeNode(gameEntities.at(i)->GetName())) {
 				XMFLOAT3 position = gameEntities.at(i)->GetTransform()->GetPosition();
-				ImGui::DragFloat3("Position", (float*) & position, 0.01f);
+				ImGui::DragFloat3("Position", (float*)&position, 0.01f);
 				gameEntities.at(i)->GetTransform()->SetPosition(position);
-				
+
 				XMFLOAT3 rotation = gameEntities.at(i)->GetTransform()->GetPitchYawRoll();
 				ImGui::DragFloat3("Rotation", (float*)&rotation, 0.01f);
 				gameEntities.at(i)->GetTransform()->SetRotation(rotation);
@@ -408,6 +408,58 @@ void Game::BuildUI(float deltaTime) {
 				XMFLOAT3 scale = gameEntities.at(i)->GetTransform()->GetScale();
 				ImGui::DragFloat3("Scale", (float*)&scale, 0.01f);
 				gameEntities.at(i)->GetTransform()->SetScale(scale);
+
+				ImGui::TreePop();
+			}
+		}
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNode("Cameras")) {
+		if (ImGui::BeginCombo("Selected Camera", cameras[selectedCamera]->GetName())) {
+			for (int i = 0; i < cameras.size(); i++)
+			{
+				const bool is_selected = (selectedCamera == i);
+				if (ImGui::Selectable(cameras[i]->GetName(), is_selected))
+					selectedCamera = i;
+
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::TextColored(ImVec4(0.5f,0.5f,1.0f,1.0f), "Controls (?)");
+		ImGui::SetItemTooltip("WASD - move directionally\nC - Move down\nSpace - Move up\nRight click + mouse move - look around\nCtrl + scoll - change move speed", ImGuiHoveredFlags_DelayNone);
+		for (unsigned int i = 0; i < cameras.size(); i++) {
+			if (ImGui::TreeNode(cameras[i]->GetName())) {
+
+				XMFLOAT3 position = cameras.at(i)->GetTransform()->GetPosition();
+				ImGui::DragFloat3("Position", (float*)&position, 0.01f);
+				cameras.at(i)->GetTransform()->SetPosition(position);
+
+				XMFLOAT3 rotation = cameras.at(i)->GetTransform()->GetPitchYawRoll();
+				ImGui::DragFloat3("Rotation", (float*)&rotation, 0.01f);
+				cameras.at(i)->GetTransform()->SetRotation(rotation);
+
+				float speed = cameras[i]->GetMoveSpeed();
+				ImGui::DragFloat("Camera Speed", &speed, 0.01f, 0.0f, 0.0f, "%.3f");
+				cameras[i]->SetMoveSpeed(speed);
+
+				float sensitivity = cameras[i]->GetSensitivity();
+				ImGui::DragFloat("Look Sensitivity", &sensitivity, 0.01f, 0.0f, 0.0f, "%.3f");
+				cameras[i]->SetSensitivity(sensitivity);
+
+				float fov = cameras[i]->GetFOV();
+				ImGui::DragFloat("Field of View", &fov, 0.01f, 0.0f, 0.0f, "%.3f");
+				cameras[i]->SetFOV(fov);
+
+				float nearplane = cameras[i]->GetNearplane();
+				ImGui::DragFloat("Near Plane", &nearplane, 0.01f, 0.0f, 0.0f, "%.3f");
+				cameras[i]->SetNearplane(nearplane);
+
+				float farplane = cameras[i]->GetFarplane();
+				ImGui::DragFloat("Far Plane", &farplane, 0.01f, 0.0f, 0.0f, "%.3f");
+				cameras[i]->SetFarPlane(farplane);
 
 				ImGui::TreePop();
 			}

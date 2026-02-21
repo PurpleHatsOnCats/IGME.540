@@ -5,11 +5,9 @@ Transform::Transform()
 	position = XMFLOAT3(0, 0, 0);
 	rotation = XMFLOAT3(0, 0, 0);
 	scale = XMFLOAT3(1, 1, 1);
-	right = XMFLOAT3(1, 0, 0);
-	up = XMFLOAT3(0, 1, 0);
-	forward = XMFLOAT3(0, 0, 1);
 	XMStoreFloat4x4(&world, XMMatrixIdentity());
 	XMStoreFloat4x4(&worldInverseTranspose, XMMatrixIdentity());
+	UpdateDirections();
 	isWorldDirty = false;
 }
 
