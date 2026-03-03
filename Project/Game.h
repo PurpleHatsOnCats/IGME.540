@@ -5,10 +5,11 @@
 #include <memory>
 #include <vector>
 #include "Mesh.h"
-#include "BufferStructs.h"
+#include "VertexShaderData.h"
 #include "GameEntity.h"
 #include "Camera.h"
 
+using namespace Microsoft::WRL;
 class Game
 {
 public:
@@ -26,7 +27,8 @@ public:
 private:
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
-	void LoadShaders();
+	ComPtr<ID3D11VertexShader> LoadVertexShader(std::wstring);
+	ComPtr<ID3D11PixelShader> LoadPixelShader(std::wstring);
 	void CreateGeometry();
 	void BuildUI(float deltaTime);
 
@@ -40,8 +42,6 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 
 	// Shaders and shader-related constructs
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
-	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 
 	// Custom fields
