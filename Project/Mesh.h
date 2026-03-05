@@ -4,6 +4,11 @@
 #include "Graphics.h"
 #include <d3d11_1.h>
 #include <wrl/client.h>
+#include <vector>
+#include <fstream>
+#include <DirectXMath.h>
+#include <unordered_map>
+using namespace DirectX;
 
 class Mesh
 {
@@ -20,7 +25,8 @@ public:
 	unsigned int GetIndexCount();
 	const char* GetName();
 	void Draw();
+	void SetBuffers(Vertex* vertices, unsigned int vertCount, unsigned int* indices, unsigned int indexCount);
 
 	Mesh(const char* name, Vertex* vertices, unsigned int vertCount, unsigned int* indices, unsigned int indexCount);
-	Mesh(const char* filename);
+	Mesh(const char* name, const char* filename);
 };

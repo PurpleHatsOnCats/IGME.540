@@ -175,45 +175,25 @@ void Game::CreateGeometry()
 	std::shared_ptr<Material> material3 = std::make_shared<Material>(
 		blue, vertexShader, pixelShader);
 	
-	// Triangle
-	Vertex vertices1[] =
-	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f)},
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-	};
-	unsigned int indices1[] = { 0, 1, 2 };
+	// Create meshes from obj files
+	shapes.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
+	shapes.push_back(std::make_shared<Mesh>("Cylinder", FixPath("../../Assets/Meshes/cylinder.obj").c_str()));
+	shapes.push_back(std::make_shared<Mesh>("Helix", FixPath("../../Assets/Meshes/helix.obj").c_str()));
+	shapes.push_back(std::make_shared<Mesh>("Quad", FixPath("../../Assets/Meshes/quad.obj").c_str()));
+	shapes.push_back(std::make_shared<Mesh>("Quad Double Sided", FixPath("../../Assets/Meshes/quad_double_sided.obj").c_str()));
+	shapes.push_back(std::make_shared<Mesh>("Sphere", FixPath("../../Assets/Meshes/sphere.obj").c_str()));
+	shapes.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
 
-	// Rectangle
-	Vertex vertices2[] =
-	{
-		{ XMFLOAT3(+0.5f, +0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(-0.5f, +0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-	};
-	unsigned int indices2[] = { 0, 1, 2, 2, 3, 0 };
-
-	// Pentagon
-	Vertex vertices3[] =
-	{
-		{ XMFLOAT3(-0.3f, +0.0f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(+0.3f, +0.0f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(+0.15f, -0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-		{ XMFLOAT3(-0.15f, -0.5f, +0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT3(0.0f,0.0f,0.0f) },
-	};
-	unsigned int indices3[] = { 0, 1, 2, 0, 2, 3, 0, 3, 4};
-	
-	shapes.push_back(std::make_shared<Mesh>("Triangle", vertices1, (unsigned int)ARRAYSIZE(vertices1), indices1, (unsigned int)ARRAYSIZE(indices1)));
-	shapes.push_back(std::make_shared<Mesh>("Rectangle", vertices2, (unsigned int)ARRAYSIZE(vertices2), indices2, (unsigned int)ARRAYSIZE(indices2)));
-	shapes.push_back(std::make_shared<Mesh>("Pentagon", vertices3, (unsigned int)ARRAYSIZE(vertices3), indices3, (unsigned int)ARRAYSIZE(indices3)));
-
+	// Create game entities
 	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(0), material1, "Entity 0"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(0), material2, "Entity 1"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(0), material3, "Entity 2"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(1), material1, "Entity 3"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(2), material2, "Entity 4"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(1), material2, "Entity 1"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(2), material3, "Entity 2"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(3), material1, "Entity 3"));
+	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(4), material2, "Entity 4"));
+
+	for (int i = 0; i < gameEntities.size(); i++) {
+		gameEntities.at(i)->GetTransform()->MoveAbsolute(i*3.0f, 0.0f, 5.0f);
+	}
 }
 
 
@@ -242,23 +222,7 @@ void Game::Update(float deltaTime, float totalTime)
 	
 	// Move game entities
 	for (unsigned int i = 0; i < gameEntities.size(); i++) {
-		switch (i) {
-		case 0: gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime), (float)sin(totalTime), 0);
-			gameEntities.at(i)->GetTransform()->Rotate(0, 0, deltaTime * 2.0f);
-			break;
-		case 1: gameEntities.at(i)->GetTransform()->Rotate(0, 0, deltaTime * 2.0f);
-			break;
-		case 2: gameEntities.at(i)->GetTransform()->Scale((1.0f - (0.1f*deltaTime)), 1, 1);
-			gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime)/2.0f, 0, 0);
-			break;
-		case 3: gameEntities.at(i)->GetTransform()->MoveAbsolute(0.1f * deltaTime, 0.1f * deltaTime, 0.0f);
-			gameEntities.at(i)->GetTransform()->Scale((1.0f + (0.2f * deltaTime)), (1.0f - (0.2f * deltaTime)), 1.0f);
-			gameEntities.at(i)->GetTransform()->Rotate(0.1f * deltaTime, 0.1f * deltaTime, 0.0f);
-			break;
-		case 4: gameEntities.at(i)->GetTransform()->SetPosition((float)cos(totalTime * 5.0f), (float)sin(totalTime), 0);
-			break;
-		default:break;
-		}
+		gameEntities.at(i)->GetTransform()->Rotate(0.0f, deltaTime * 1.0f, 0.0f);
 	}
 
 	// Update Camera
