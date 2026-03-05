@@ -125,9 +125,9 @@ ComPtr<ID3D11VertexShader> Game::LoadVertexShader(std::wstring filename)
 		inputElements[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
 
 		// Set up the third element - a Normal, which is 3 float values
-		inputElements[1].Format = DXGI_FORMAT_R32G32B32_FLOAT;				// 3x 32-bit floats
-		inputElements[1].SemanticName = "NORMAL";							// Match our vertex shader input!
-		inputElements[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
+		inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;				// 3x 32-bit floats
+		inputElements[2].SemanticName = "NORMAL";							// Match our vertex shader input!
+		inputElements[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
 
 		// Create the input layout, verifying our description against actual shader code
 		Graphics::Device->CreateInputLayout(
@@ -164,8 +164,8 @@ void Game::CreateGeometry()
 	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
 
-	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"PixelShader.cso");
-	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"VertexShader.cso");
+	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"VertexShader.cso");
+	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"PixelShader.cso");
 
 	// Create Materials
 	std::shared_ptr<Material> material1 = std::make_shared<Material>(

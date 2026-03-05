@@ -22,5 +22,5 @@ public:
 	void Draw();
 
 	Mesh(const char* name, Vertex* vertices, unsigned int vertCount, unsigned int* indices, unsigned int indexCount);
+	Mesh(const char* filename);
 };
-

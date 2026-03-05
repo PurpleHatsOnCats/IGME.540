@@ -100,3 +100,8 @@ Mesh::Mesh(const char* name, Vertex* vertices, unsigned int vertCount, unsigned 
 		Graphics::Device->CreateBuffer(&ibd, &initialIndexData, Mesh::indexBuffer.GetAddressOf());
 	}
 }
+
+Mesh::Mesh(const char* filename)
+{
+
+}
