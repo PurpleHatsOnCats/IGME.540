@@ -12,7 +12,7 @@ Camera::Camera(float aspectRatio, XMFLOAT3 position, float fov, float nearplane,
 	UpdateProjectionMatrix(aspectRatio);
 	UpdateViewMatrix();
 
-	moveSpeed = 1.0f;
+	moveSpeed = 2.0f;
 	lookSensitivity = 0.005f;
 
 	Camera::name = name;

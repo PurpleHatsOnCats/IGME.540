@@ -5,9 +5,10 @@
 #include <memory>
 #include <vector>
 #include "Mesh.h"
-#include "VertexShaderData.h"
+#include "BufferStructs.h"
 #include "GameEntity.h"
 #include "Camera.h"
+#include "ColorMath.h"
 
 using namespace Microsoft::WRL;
 class Game
@@ -30,7 +31,7 @@ private:
 	ComPtr<ID3D11VertexShader> LoadVertexShader(std::wstring);
 	ComPtr<ID3D11PixelShader> LoadPixelShader(std::wstring);
 	void CreateGeometry();
-	void BuildUI(float deltaTime);
+	void BuildUI(float deltaTime, float totalTime);
 
 	// Note the usage of ComPtr below
 	//  - This is a smart pointer for objects that abide by the
@@ -48,13 +49,17 @@ private:
 	float backgroundColor[4];
 	bool showDemo;
 	int sliderValue = 0;
-	VertexShaderData vertexShaderData;
+	VertexShaderExternalData vertexShaderData;
+	PixelShaderExternalData pixelShaderData;
 
 	std::vector<std::shared_ptr<Mesh>> shapes;
 	std::vector<std::shared_ptr<GameEntity>> gameEntities;
 	std::vector<std::shared_ptr<Camera>> cameras;
 	int selectedCamera = 0;
 
-	Microsoft::WRL::ComPtr<ID3D11Buffer> constBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexShaderConstantBuffer;
+	Microsoft::WRL::ComPtr<ID3D11Buffer> pixelShaderConstantBuffer;
+
+	XMFLOAT3 colorGradient;
 };
 

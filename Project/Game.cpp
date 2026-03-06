@@ -56,17 +56,25 @@ Game::Game()
 		Graphics::Context->IASetInputLayout(inputLayout.Get());
 	}
 
-	// Create constant buffer
+	// Create constant buffers
 	D3D11_BUFFER_DESC cbDesc = {}; // Sets struct to all zeros
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.ByteWidth = (sizeof(VertexShaderData)+15)/ 16 * 16; // Must be a multiple of 16
+	cbDesc.ByteWidth = (sizeof(VertexShaderExternalData)+15)/ 16 * 16; // Must be a multiple of 16
 	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
-	Graphics::Device->CreateBuffer(&cbDesc, 0, constBuffer.GetAddressOf());
-	Graphics::Context->VSSetConstantBuffers(0, 1, constBuffer.GetAddressOf());
+	Graphics::Device->CreateBuffer(&cbDesc, 0, vertexShaderConstantBuffer.GetAddressOf());
+	Graphics::Context->VSSetConstantBuffers(0, 1, vertexShaderConstantBuffer.GetAddressOf());
+
+	cbDesc = {}; // Sets struct to all zeros
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.ByteWidth = (sizeof(PixelShaderExternalData) + 15) / 16 * 16; // Must be a multiple of 16
+	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+	Graphics::Device->CreateBuffer(&cbDesc, 0, pixelShaderConstantBuffer.GetAddressOf());
+	Graphics::Context->PSSetConstantBuffers(0, 1, pixelShaderConstantBuffer.GetAddressOf());
 
 	// Constant buffer data
-	vertexShaderData.colorTint = DirectX::XMFLOAT4(0.5f, 1.0f, 0.5f, 1.0f);
+	pixelShaderData.colorTint = DirectX::XMFLOAT4(0.5f, 1.0f, 0.5f, 1.0f);
 	vertexShaderData.world = DirectX::XMFLOAT4X4();
 
 	// Create Cameras
@@ -166,14 +174,23 @@ void Game::CreateGeometry()
 
 	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"VertexShader.cso");
 	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"PixelShader.cso");
+	ComPtr<ID3D11PixelShader> debugUVsPSShader = LoadPixelShader(L"DebugUVsPS.cso");
+	ComPtr<ID3D11PixelShader> debugNormalsPSShader = LoadPixelShader(L"DebugNormalsPS.cso");
+	ComPtr<ID3D11PixelShader> customPSShader = LoadPixelShader(L"CustomPS.cso");
 
 	// Create Materials
-	std::shared_ptr<Material> material1 = std::make_shared<Material>(
+	std::shared_ptr<Material> materialRed = std::make_shared<Material>(
 		red, vertexShader, pixelShader);
-	std::shared_ptr<Material> material2 = std::make_shared<Material>(
+	std::shared_ptr<Material> materialGreen = std::make_shared<Material>(
 		green, vertexShader, pixelShader);
-	std::shared_ptr<Material> material3 = std::make_shared<Material>(
+	std::shared_ptr<Material> materialBlue = std::make_shared<Material>(
 		blue, vertexShader, pixelShader);
+	std::shared_ptr<Material> materialUV = std::make_shared<Material>(
+		blue, vertexShader, debugUVsPSShader);
+	std::shared_ptr<Material> materialNormal = std::make_shared<Material>(
+		blue, vertexShader, debugNormalsPSShader);
+	std::shared_ptr<Material> materialCustom = std::make_shared<Material>(
+		blue, vertexShader, customPSShader);
 	
 	// Create meshes from obj files
 	shapes.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
@@ -185,14 +202,26 @@ void Game::CreateGeometry()
 	shapes.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
 
 	// Create game entities
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(0), material1, "Entity 0"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(1), material2, "Entity 1"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(2), material3, "Entity 2"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(3), material1, "Entity 3"));
-	gameEntities.push_back(std::make_shared<GameEntity>(shapes.at(4), material2, "Entity 4"));
-
-	for (int i = 0; i < gameEntities.size(); i++) {
-		gameEntities.at(i)->GetTransform()->MoveAbsolute(i*3.0f, 0.0f, 5.0f);
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < shapes.size(); j++) {
+			std::shared_ptr<Material> chosenMaterial;
+			switch (i) {
+			case 0: 
+				// Chose a color material
+				switch (j%3) {
+				case 0: chosenMaterial = materialRed;break;
+				case 1: chosenMaterial = materialGreen;break;
+				case 2: chosenMaterial = materialBlue;break;
+				}
+				break;
+			case 1: chosenMaterial = materialUV;break;
+			case 2: chosenMaterial = materialNormal;break;
+			case 3: chosenMaterial = materialCustom;break;
+			}
+			std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(j), chosenMaterial, "Entity 0");
+			gameEntity->GetTransform()->SetPosition(j * 3.0f, i * 3.0f, 5.0f);
+			gameEntities.push_back(gameEntity);
+		}
 	}
 }
 
@@ -218,11 +247,16 @@ void Game::Update(float deltaTime, float totalTime)
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
 
-	BuildUI(deltaTime);
+	BuildUI(deltaTime, totalTime);
 	
+	colorGradient = ColorMath::HSLtoRGB(std::fmod(totalTime, 10.0f)/10.0f, 1.0f, 0.5f);
+
 	// Move game entities
 	for (unsigned int i = 0; i < gameEntities.size(); i++) {
 		gameEntities.at(i)->GetTransform()->Rotate(0.0f, deltaTime * 1.0f, 0.0f);
+		if (i >= 12) {
+			gameEntities.at(i)->GetMaterial()->SetColor(XMFLOAT4(colorGradient.x, colorGradient.y, colorGradient.z, 1.0f));
+		}
 	}
 
 	// Update Camera
@@ -244,6 +278,7 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 		vertexShaderData.view = cameras[selectedCamera]->GetViewMatrix();
 		vertexShaderData.projection = cameras[selectedCamera]->GetProjectionMatrix();
+		pixelShaderData.time = totalTime;
 	}
 
 	// DRAW geometry
@@ -251,13 +286,18 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
 		for (unsigned int i = 0; i < gameEntities.size(); i++) {
+			// Update constant buffer data
+			vertexShaderData.world = gameEntities.at(i)->GetTransform()->GetWorldMatrix();
+			pixelShaderData.colorTint = gameEntities.at(i)->GetMaterial()->GetColor();
+
 			// Copy CPU constBuffer to GPU constBuffer
 			D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
-			Graphics::Context->Map(constBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
-			vertexShaderData.world = gameEntities.at(i)->GetTransform()->GetWorldMatrix();
+			Graphics::Context->Map(vertexShaderConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
 			memcpy(mappedBuffer.pData, &vertexShaderData, sizeof(vertexShaderData)); // Copy data from CPU to GPU
-
-			Graphics::Context->Unmap(constBuffer.Get(), 0); // Unlocks GPU buffer
+			Graphics::Context->Unmap(vertexShaderConstantBuffer.Get(), 0); // Unlocks GPU buffer
+			Graphics::Context->Map(pixelShaderConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
+			memcpy(mappedBuffer.pData, &pixelShaderData, sizeof(pixelShaderData)); // Copy data from CPU to GPU
+			Graphics::Context->Unmap(pixelShaderConstantBuffer.Get(), 0); // Unlocks GPU buffer
 
 			gameEntities.at(i)->Draw();
 		}
@@ -284,7 +324,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	}
 }
 
-void Game::BuildUI(float deltaTime) {
+void Game::BuildUI(float deltaTime, float totalTime) {
 	// Feed fresh data to ImGui
 	ImGuiIO& io = ImGui::GetIO();
 	io.DeltaTime = deltaTime;
@@ -306,9 +346,11 @@ void Game::BuildUI(float deltaTime) {
 	ImGui::Begin("My first window");
 	if (ImGui::TreeNode("Window data")) {
 		ImGui::Text("Fps: %f", ImGui::GetIO().Framerate);
+		ImGui::Text("TotalTime: %f", totalTime);
 		ImGui::Text("Window dimensions: %i x %i", Window::Width(), Window::Height());
 		ImGui::ColorEdit4("Background color", backgroundColor);
 		ImGui::Checkbox("Show demo window", &showDemo);
+		ImGui::InputFloat3("Gradient Color", &colorGradient.x);
 
 		const char* items[] = { "Apple","Banana","Orange","Tomatoe" };
 		static int item_selected_idx = 0;

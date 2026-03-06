@@ -245,17 +245,17 @@ Mesh::Mesh(const char* name, const char* filename)
 			//    they need to be adusted
 			Vertex v1{};
 			v1.Position = positions[max(i[0] - 1, 0)];
-			v1.UV = uvs[max(i[1] - 1, 0)];
+			v1.TexCoord = uvs[max(i[1] - 1, 0)];
 			v1.Normal = normals[max(i[2] - 1, 0)];
 
 			Vertex v2{};
 			v2.Position = positions[max(i[3] - 1, 0)];
-			v2.UV = uvs[max(i[4] - 1, 0)];
+			v2.TexCoord = uvs[max(i[4] - 1, 0)];
 			v2.Normal = normals[max(i[5] - 1, 0)];
 
 			Vertex v3{};
 			v3.Position = positions[max(i[6] - 1, 0)];
-			v3.UV = uvs[max(i[7] - 1, 0)];
+			v3.TexCoord = uvs[max(i[7] - 1, 0)];
 			v3.Normal = normals[max(i[8] - 1, 0)];
 
 			// The model is most likely in a right-handed space,
@@ -270,9 +270,9 @@ Mesh::Mesh(const char* name, const char* filename)
 			// 3D modeling packages use the bottom left as (0,0)
 
 			// Flip the UV's since they're probably "upside down"
-			v1.UV.y = 1.0f - v1.UV.y;
-			v2.UV.y = 1.0f - v2.UV.y;
-			v3.UV.y = 1.0f - v3.UV.y;
+			v1.TexCoord.y = 1.0f - v1.TexCoord.y;
+			v2.TexCoord.y = 1.0f - v2.TexCoord.y;
+			v3.TexCoord.y = 1.0f - v3.TexCoord.y;
 
 			// Flip Z (LH vs. RH)
 			v1.Position.z *= -1.0f;
@@ -297,11 +297,11 @@ Mesh::Mesh(const char* name, const char* filename)
 				// Make the last vertex
 				Vertex v4{};
 				v4.Position = positions[max(i[9] - 1, 0)];
-				v4.UV = uvs[max(i[10] - 1, 0)];
+				v4.TexCoord = uvs[max(i[10] - 1, 0)];
 				v4.Normal = normals[max(i[11] - 1, 0)];
 
 				// Flip the UV, Z pos and normal's Z
-				v4.UV.y = 1.0f - v4.UV.y;
+				v4.TexCoord.y = 1.0f - v4.TexCoord.y;
 				v4.Position.z *= -1.0f;
 				v4.Normal.z *= -1.0f;
 
@@ -329,8 +329,8 @@ Mesh::Mesh(const char* name, const char* filename)
 			std::to_string(v.Normal.x) +
 			std::to_string(v.Normal.y) +
 			std::to_string(v.Normal.z) +
-			std::to_string(v.UV.x) +
-			std::to_string(v.UV.y);
+			std::to_string(v.TexCoord.x) +
+			std::to_string(v.TexCoord.y);
 
 		// Prepare the index for this vertex and
 		// search for the vertex in the hash table
