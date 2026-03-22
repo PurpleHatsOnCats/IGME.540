@@ -56,23 +56,6 @@ Game::Game()
 		Graphics::Context->IASetInputLayout(inputLayout.Get());
 	}
 
-	// Create constant buffers
-	D3D11_BUFFER_DESC cbDesc = {}; // Sets struct to all zeros
-	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.ByteWidth = (sizeof(VertexShaderExternalData)+15)/ 16 * 16; // Must be a multiple of 16
-	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
-	Graphics::Device->CreateBuffer(&cbDesc, 0, vertexShaderConstantBuffer.GetAddressOf());
-	Graphics::Context->VSSetConstantBuffers(0, 1, vertexShaderConstantBuffer.GetAddressOf());
-
-	cbDesc = {}; // Sets struct to all zeros
-	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.ByteWidth = (sizeof(PixelShaderExternalData) + 15) / 16 * 16; // Must be a multiple of 16
-	cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
-	Graphics::Device->CreateBuffer(&cbDesc, 0, pixelShaderConstantBuffer.GetAddressOf());
-	Graphics::Context->PSSetConstantBuffers(0, 1, pixelShaderConstantBuffer.GetAddressOf());
-
 	// Constant buffer data
 	pixelShaderData.colorTint = DirectX::XMFLOAT4(0.5f, 1.0f, 0.5f, 1.0f);
 	vertexShaderData.world = DirectX::XMFLOAT4X4();
@@ -166,31 +149,71 @@ ComPtr<ID3D11PixelShader> Game::LoadPixelShader(std::wstring filename)
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_RedBrick;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/RedBrick.jpg").c_str(),
+		nullptr,
+		srv_RedBrick.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_WoodFloor;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/WoodFloor.jpg").c_str(),
+		nullptr,
+		srv_WoodFloor.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Stain;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/StainDecal.png").c_str(),
+		nullptr,
+		srv_Stain.GetAddressOf());
+
+	ComPtr<ID3D11SamplerState> samplerState;
+	D3D11_SAMPLER_DESC sampDesc = {};
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP; // Each dimension can
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP; // have a different mode
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP; // but that is uncommon
+	sampDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	sampDesc.MaxAnisotropy = 16;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX; // Maximum mip level
+
+	Graphics::Device->CreateSamplerState(
+		&sampDesc,
+		samplerState.GetAddressOf());
+
 	// Create some temporary variables to represent colors
 	// - Not necessary, just makes things more readable
 	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
 	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
 	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	XMFLOAT4 white = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"VertexShader.cso");
 	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"PixelShader.cso");
 	ComPtr<ID3D11PixelShader> debugUVsPSShader = LoadPixelShader(L"DebugUVsPS.cso");
 	ComPtr<ID3D11PixelShader> debugNormalsPSShader = LoadPixelShader(L"DebugNormalsPS.cso");
 	ComPtr<ID3D11PixelShader> customPSShader = LoadPixelShader(L"CustomPS.cso");
+	ComPtr<ID3D11PixelShader> twoTexturePSShader = LoadPixelShader(L"TwoTexturePS.cso");
 
 	// Create Materials
-	std::shared_ptr<Material> materialRed = std::make_shared<Material>(
-		red, vertexShader, pixelShader);
-	std::shared_ptr<Material> materialGreen = std::make_shared<Material>(
-		green, vertexShader, pixelShader);
-	std::shared_ptr<Material> materialBlue = std::make_shared<Material>(
-		blue, vertexShader, pixelShader);
-	std::shared_ptr<Material> materialUV = std::make_shared<Material>(
-		blue, vertexShader, debugUVsPSShader);
-	std::shared_ptr<Material> materialNormal = std::make_shared<Material>(
-		blue, vertexShader, debugNormalsPSShader);
-	std::shared_ptr<Material> materialCustom = std::make_shared<Material>(
-		blue, vertexShader, customPSShader);
+	materials = std::vector<std::shared_ptr<Material>>();
+	materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Brick"));
+	materials.at(0)->AddSampler(0, samplerState);
+	materials.at(0)->AddTextureSRV(0, srv_RedBrick);
+	materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Wood"));
+	materials.at(1)->AddSampler(0, samplerState);
+	materials.at(1)->AddTextureSRV(0, srv_WoodFloor);
+	materials.push_back(std::make_shared<Material>(white, vertexShader, twoTexturePSShader, "Combination"));
+	materials.at(2)->AddSampler(0, samplerState);
+	materials.at(2)->AddTextureSRV(0, srv_WoodFloor);
+	materials.at(2)->AddTextureSRV(1, srv_Stain);
+	materials.push_back(std::make_shared<Material>(blue, vertexShader, debugUVsPSShader, "UV Debug"));
+	materials.push_back(std::make_shared<Material>(blue, vertexShader, debugNormalsPSShader, "Normal Debug"));
+	materials.push_back(std::make_shared<Material>(blue, vertexShader, customPSShader, "Custom Shader"));
+	
 	
 	// Create meshes from obj files
 	shapes.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
@@ -202,23 +225,16 @@ void Game::CreateGeometry()
 	shapes.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
 
 	// Create game entities
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < materials.size(); i++) {
 		for (int j = 0; j < shapes.size(); j++) {
-			std::shared_ptr<Material> chosenMaterial;
-			switch (i) {
-			case 0: 
-				// Chose a color material
-				switch (j%3) {
-				case 0: chosenMaterial = materialRed;break;
-				case 1: chosenMaterial = materialGreen;break;
-				case 2: chosenMaterial = materialBlue;break;
-				}
-				break;
-			case 1: chosenMaterial = materialUV;break;
-			case 2: chosenMaterial = materialNormal;break;
-			case 3: chosenMaterial = materialCustom;break;
-			}
-			std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(j), chosenMaterial, "Entity 0");
+
+			// Do some deep memory copy in order to utilize string appending
+			std::string str_name = (std::to_string(i) + std::string(" x ") + std::to_string(j));
+			const std::string::size_type size = str_name.size();
+			char* name = new char[size + 1];   //we need extra char for NUL
+			memcpy(name, str_name.c_str(), size + 1);
+
+			std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(j), materials.at(i), name);
 			gameEntity->GetTransform()->SetPosition(j * 3.0f, i * 3.0f, 5.0f);
 			gameEntities.push_back(gameEntity);
 		}
@@ -254,7 +270,7 @@ void Game::Update(float deltaTime, float totalTime)
 	// Move game entities
 	for (unsigned int i = 0; i < gameEntities.size(); i++) {
 		gameEntities.at(i)->GetTransform()->Rotate(0.0f, deltaTime * 1.0f, 0.0f);
-		if (i >= 12) {
+		if (gameEntities.at(i)->GetMaterial()->GetName() == "Custom Shader") {
 			gameEntities.at(i)->GetMaterial()->SetColor(XMFLOAT4(colorGradient.x, colorGradient.y, colorGradient.z, 1.0f));
 		}
 	}
@@ -286,19 +302,26 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
 		for (unsigned int i = 0; i < gameEntities.size(); i++) {
-			// Update constant buffer data
+			// Update shader data
 			vertexShaderData.world = gameEntities.at(i)->GetTransform()->GetWorldMatrix();
 			pixelShaderData.colorTint = gameEntities.at(i)->GetMaterial()->GetColor();
+			pixelShaderData.UVScale = gameEntities.at(i)->GetMaterial()->GetUVScale();
+			pixelShaderData.UVOffset = gameEntities.at(i)->GetMaterial()->GetUVOffset();
 
-			// Copy CPU constBuffer to GPU constBuffer
-			D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
-			Graphics::Context->Map(vertexShaderConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
-			memcpy(mappedBuffer.pData, &vertexShaderData, sizeof(vertexShaderData)); // Copy data from CPU to GPU
-			Graphics::Context->Unmap(vertexShaderConstantBuffer.Get(), 0); // Unlocks GPU buffer
-			Graphics::Context->Map(pixelShaderConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer); // Locks GPU buffer and gets GPU address
-			memcpy(mappedBuffer.pData, &pixelShaderData, sizeof(pixelShaderData)); // Copy data from CPU to GPU
-			Graphics::Context->Unmap(pixelShaderConstantBuffer.Get(), 0); // Unlocks GPU buffer
+			Graphics::FillAndBindNextConstantBuffer(
+				&vertexShaderData,
+				sizeof(VertexShaderExternalData),
+				D3D11_VERTEX_SHADER,
+				0
+			);
+			Graphics::FillAndBindNextConstantBuffer(
+				&pixelShaderData,
+				sizeof(PixelShaderExternalData),
+				D3D11_PIXEL_SHADER,
+				0
+			);
 
+			gameEntities.at(i)->GetMaterial()->BindTexturesAndSamplers();
 			gameEntities.at(i)->Draw();
 		}
 
@@ -391,6 +414,31 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 		}
 		ImGui::TreePop();
 	}
+	if (ImGui::TreeNode("Materials")) {
+		for (unsigned int i = 0; i < materials.size(); i++) {
+			if (ImGui::TreeNode(materials.at(i)->GetName())) {
+				XMFLOAT4 color = materials.at(i)->GetColor();
+				ImGui::DragFloat4("Color", (float*)&color, 0.01f, 0.0f, 1.0f);
+				materials.at(i)->SetColor(color);
+
+				XMFLOAT2 uvscale = materials.at(i)->GetUVScale();
+				ImGui::DragFloat2("UV Scale", (float*)&uvscale, 0.01f);
+				materials.at(i)->SetUVScale(uvscale);
+
+				XMFLOAT2 uvoffset = materials.at(i)->GetUVOffset();
+				ImGui::DragFloat2("UV Offset", (float*)&uvoffset, 0.01f);
+				materials.at(i)->SetUVOffset(uvoffset);
+
+				std::unordered_map<unsigned int, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> textureSRVs = materials.at(i)->GetSRVs();
+				for (auto i = textureSRVs.begin(); i != textureSRVs.end(); i++) {
+					ImGui::Image((void*)i->second.Get(),ImVec2(100,100));
+				}
+
+				ImGui::TreePop();
+			}
+		}
+		ImGui::TreePop();
+	}
 	if (ImGui::TreeNode("Game Entities")) {
 		for (unsigned int i = 0; i < gameEntities.size(); i++) {
 			if (ImGui::TreeNode(gameEntities.at(i)->GetName())) {
@@ -465,5 +513,7 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 	}
 	ImGui::End();
 }
+
+
 
 

@@ -18,6 +18,8 @@ struct VertexToPixel
 cbuffer ExternalData : register(b0)
 {
     float4 colorTint;
+    float2 uvscale;
+    float2 uvoffset;
     float time;
 }
 

@@ -9,6 +9,7 @@
 #include "GameEntity.h"
 #include "Camera.h"
 #include "ColorMath.h"
+#include <WICTextureLoader.h>
 
 using namespace Microsoft::WRL;
 class Game
@@ -38,10 +39,6 @@ private:
 	//     Component Object Model, which DirectX objects do
 	//  - More info here: https://github.com/Microsoft/DirectXTK/wiki/ComPtr
 
-	// Buffers to hold actual geometry data
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
-
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 
@@ -53,12 +50,10 @@ private:
 	PixelShaderExternalData pixelShaderData;
 
 	std::vector<std::shared_ptr<Mesh>> shapes;
+	std::vector<std::shared_ptr<Material>> materials;
 	std::vector<std::shared_ptr<GameEntity>> gameEntities;
 	std::vector<std::shared_ptr<Camera>> cameras;
 	int selectedCamera = 0;
-
-	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexShaderConstantBuffer;
-	Microsoft::WRL::ComPtr<ID3D11Buffer> pixelShaderConstantBuffer;
 
 	XMFLOAT3 colorGradient;
 };
