@@ -1,41 +1,9 @@
-
-// Struct representing a single vertex worth of data
-// - This should match the vertex definition in our C++ code
-// - By "match", I mean the size, order and number of members
-// - The name of the struct itself is unimportant, but should be descriptive
-// - Each variable must have a semantic, which defines its usage
-struct VertexShaderInput
-{ 
-	// Data type
-	//  |
-	//  |   Name          Semantic
-	//  |    |                |
-	//  v    v                v
-	float3 localPosition	: POSITION;     // XYZ position
-    float2 texCoord			: TEXCOORD;
-	float3 normal			: NORMAL;
-};
-
-// Struct representing the data we're sending down the pipeline
-// - Should match our pixel shader's input (hence the name: Vertex to Pixel)
-// - At a minimum, we need a piece of data defined tagged as SV_POSITION
-// - The name of the struct itself is unimportant, but should be descriptive
-// - Each variable must have a semantic, which defines its usage
-struct VertexToPixel
-{
-	// Data type
-	//  |
-	//  |   Name          Semantic
-	//  |    |                |
-	//  v    v                v
-	float4 screenPosition	: SV_POSITION;	// XYZW position (System Value Position)
-    float2 texCoord			: TEXCOORD;
-    float3 normal			: NORMAL;
-};
+#include "LightingHeader.hlsli"
 
 cbuffer ExternalData : register(b0)
 {
     float4x4 world;
+    float4x4 worldInvTranspose;
     float4x4 view;
     float4x4 projection;
 }
@@ -60,10 +28,13 @@ VertexToPixel main( VertexShaderInput input )
 	// - Each of these components is then automatically divided by the W component, 
 	//   which we're leaving at 1.0 for now (this is more useful when dealing with 
 	//   a perspective projection matrix, which we'll get to in the future).
-    matrix wvp = mul(projection, mul(view, world));
-    output.screenPosition = mul(wvp, float4(input.localPosition, 1.0f));
-    output.normal = input.normal;
+    float4 worldPos = mul(world, float4(input.localPosition, 1.0f));
+	matrix vp = mul(projection, view);
+    output.worldPosition = worldPos;
+    output.screenPosition = mul(vp, worldPos);
+    output.normal = mul((float3x3) worldInvTranspose, input.normal);
     output.texCoord = input.texCoord;
+	
 	
 	// Whatever we return will make its way through the pipeline to the
 	// next programmable stage we're using (the pixel shader for now)

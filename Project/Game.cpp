@@ -65,6 +65,8 @@ Game::Game()
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-1), XMConvertToRadians(90.0f), 0.01f, 100.0f, "Main Camera"));
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(-2,2,-3), XMConvertToRadians(45.0f), 0.01f, 100.0f, "Second Camera"));
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
+	
+	pixelShaderData.ambientColor = XMFLOAT3(0.1f, 0.1f,0.25f);
 }
 
 
@@ -292,9 +294,12 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Clear the back buffer (erase what's on screen) and depth buffer
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	backgroundColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
 		vertexShaderData.view = cameras[selectedCamera]->GetViewMatrix();
 		vertexShaderData.projection = cameras[selectedCamera]->GetProjectionMatrix();
+
 		pixelShaderData.time = totalTime;
+		pixelShaderData.cameraPosition = cameras[selectedCamera]->GetTransform()->GetPosition();
 	}
 
 	// DRAW geometry
@@ -302,8 +307,11 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
 		for (unsigned int i = 0; i < gameEntities.size(); i++) {
-			// Update shader data
+			// Update vertex shader data
 			vertexShaderData.world = gameEntities.at(i)->GetTransform()->GetWorldMatrix();
+			vertexShaderData.worldInvTranspose = gameEntities.at(i)->GetTransform()->GetWorldInverseTransposeMatrix();
+			
+			// Update pixel shader data
 			pixelShaderData.colorTint = gameEntities.at(i)->GetMaterial()->GetColor();
 			pixelShaderData.UVScale = gameEntities.at(i)->GetMaterial()->GetUVScale();
 			pixelShaderData.UVOffset = gameEntities.at(i)->GetMaterial()->GetUVOffset();
