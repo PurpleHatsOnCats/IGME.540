@@ -73,18 +73,24 @@ float4 directionalLight(float3 worldPosition, float3 dirToCamera, float3 normal,
 }
 float4 pointLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
 {
-    float3 dirToLight = normalize(light.Position - worldPosition);
+    float3 toLight = light.Position - worldPosition;
+    float3 dirToLight = normalize(toLight);
+    float attenuationFactor = pow(max(0, 1.0f - dot(toLight, toLight) / (light.Range * light.Range)), 2);
     
     float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
     float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
-    return diffuseTerm + specularTerm;
+    return (diffuseTerm + specularTerm) * attenuationFactor;
 }
 float4 spotLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
 {
-    float3 dirToLight = light.Position - worldPosition;
-    float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
-    float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
-    return diffuseTerm + specularTerm;
+    float4 pointTerm = pointLight(worldPosition, dirToCamera, normal, light, surfaceColor);
+    
+    float pixelAngle = saturate(dot(worldPosition - light.Position, light.Direction));
+    float cosInner = cos(light.SpotInnerAngle);
+    float cosOuter = cos(light.SpotOuterAngle);
+    float falloffRange = cosOuter - cosInner;
+    
+    return pointTerm * saturate((cosOuter - pixelAngle) / falloffRange);
 }
 
 #endif

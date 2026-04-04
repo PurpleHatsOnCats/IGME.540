@@ -36,8 +36,8 @@ float4 main(VertexToPixel input) : SV_TARGET
         switch (lights[i].Type)
         {
             case LIGHT_TYPE_DIRECTIONAL: c += directionalLight(input.worldPosition, dirToCamera, normal, lights[i], surfaceColor); break;
-            case LIGHT_TYPE_POINT: c += directionalLight(input.worldPosition, dirToCamera, normal, lights[i], surfaceColor); break;
-            case LIGHT_TYPE_SPOT: c += directionalLight(input.worldPosition, dirToCamera, normal, lights[i], surfaceColor); break;
+            case LIGHT_TYPE_POINT: c += pointLight(input.worldPosition, dirToCamera, normal, lights[i], surfaceColor); break;
+            case LIGHT_TYPE_SPOT: c += spotLight(input.worldPosition, dirToCamera, normal, lights[i], surfaceColor); break;
         }
     }
     // Ambient

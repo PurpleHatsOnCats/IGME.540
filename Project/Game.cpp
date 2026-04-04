@@ -81,20 +81,25 @@ Game::Game()
 	lights[1].Color = XMFLOAT3(0.2f, 0.2f, 1.0f);
 	lights[1].Intensity = 0.5f;
 	lights.push_back({});
-	lights[2].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[2].Type = LIGHT_TYPE_SPOT;
 	lights[2].Direction = XMFLOAT3(0, -1, 0);
-	lights[2].Color = XMFLOAT3(1.0f, 1.0f, 0.0f);
-	lights[2].Intensity = 0.5f;
+	lights[2].Position = XMFLOAT3(5, 2.5f, 0);
+	lights[2].Color = XMFLOAT3(1.0f, 0.2f, 0.2f);
+	lights[2].Intensity = 10.0f;
+	lights[2].Range = 25.0f;
+	lights[2].SpotInnerAngle = 5.0f;
+	lights[2].SpotOuterAngle = 15.0f;
 	lights.push_back({});
 	lights[3].Type = LIGHT_TYPE_DIRECTIONAL;
 	lights[3].Direction = XMFLOAT3(0, 0, 1);
 	lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
 	lights[3].Intensity = 0.5f;
 	lights.push_back({});
-	lights[4].Type = LIGHT_TYPE_DIRECTIONAL;
-	lights[4].Direction = XMFLOAT3(1, 1, 1);
+	lights[4].Type = LIGHT_TYPE_POINT;
+	lights[4].Position = XMFLOAT3(2, 0, 2);
 	lights[4].Color = XMFLOAT3(1.0f, 0.2f, 1.0f);
-	lights[4].Intensity = 0.5f;
+	lights[4].Intensity = 2.0f;
+	lights[4].Range = 15.0f;
 }
 
 
