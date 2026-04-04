@@ -1,5 +1,6 @@
 #pragma once
 #include <DirectXMath.h>
+#include "Lights.h"
 
 struct VertexShaderExternalData {
 public:
@@ -16,4 +17,6 @@ public:
 	DirectX::XMFLOAT3 cameraPosition;	
 	float time;
 	DirectX::XMFLOAT3 ambientColor;
+	int numLights;
+	Light lights[16];
 };

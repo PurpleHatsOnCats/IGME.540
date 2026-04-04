@@ -67,6 +67,34 @@ Game::Game()
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
 	
 	pixelShaderData.ambientColor = XMFLOAT3(0.1f, 0.1f,0.25f);
+
+	// Create Lights
+	lights = std::vector<Light>();
+	lights.push_back({});
+	lights[0].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[0].Direction = XMFLOAT3(1, 0, 0);
+	lights[0].Color = XMFLOAT3(0.2f, 1.0f, 0.2f);
+	lights[0].Intensity = 0.5f;
+	lights.push_back({});
+	lights[1].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[1].Direction = XMFLOAT3(-1, 0, 0);
+	lights[1].Color = XMFLOAT3(0.2f, 0.2f, 1.0f);
+	lights[1].Intensity = 0.5f;
+	lights.push_back({});
+	lights[2].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[2].Direction = XMFLOAT3(0, -1, 0);
+	lights[2].Color = XMFLOAT3(1.0f, 1.0f, 0.0f);
+	lights[2].Intensity = 0.5f;
+	lights.push_back({});
+	lights[3].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[3].Direction = XMFLOAT3(0, 0, 1);
+	lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	lights[3].Intensity = 0.5f;
+	lights.push_back({});
+	lights[4].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[4].Direction = XMFLOAT3(1, 1, 1);
+	lights[4].Color = XMFLOAT3(1.0f, 0.2f, 1.0f);
+	lights[4].Intensity = 0.5f;
 }
 
 
@@ -300,6 +328,12 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		pixelShaderData.time = totalTime;
 		pixelShaderData.cameraPosition = cameras[selectedCamera]->GetTransform()->GetPosition();
+
+		// Copy light data into ps buffer struct
+		pixelShaderData.numLights = lights.size();
+		Light* lightsArray = lights.data();
+		memcpy(&pixelShaderData.lights, lightsArray, sizeof(Light) * pixelShaderData.numLights);
+		
 	}
 
 	// DRAW geometry

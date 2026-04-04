@@ -10,6 +10,7 @@
 #include "Camera.h"
 #include "ColorMath.h"
 #include <WICTextureLoader.h>
+#include "Lights.h"
 
 using namespace Microsoft::WRL;
 class Game
@@ -56,5 +57,7 @@ private:
 	int selectedCamera = 0;
 
 	XMFLOAT3 colorGradient;
+
+	std::vector<Light> lights;
 };
 
