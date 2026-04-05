@@ -85,9 +85,9 @@ float4 spotLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light 
 {
     float4 pointTerm = pointLight(worldPosition, dirToCamera, normal, light, surfaceColor);
     
-    float pixelAngle = saturate(dot(worldPosition - light.Position, light.Direction));
-    float cosInner = cos(light.SpotInnerAngle);
-    float cosOuter = cos(light.SpotOuterAngle);
+    float pixelAngle = saturate(dot(normalize(worldPosition - light.Position), normalize(light.Direction)));
+    float cosInner = cos(radians(light.SpotInnerAngle));
+    float cosOuter = cos(radians(light.SpotOuterAngle));
     float falloffRange = cosOuter - cosInner;
     
     return pointTerm * saturate((cosOuter - pixelAngle) / falloffRange);
