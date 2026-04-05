@@ -580,7 +580,7 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 					}
 					ImGui::EndCombo();
 				}
-				ImGui::ColorEdit3("Color", (float*)&lights[i].Color, 0.01f);
+				ImGui::ColorEdit3("Color", (float*)&lights[i].Color, ImGuiColorEditFlags_Float);
 				ImGui::DragFloat("Intensity", (float*)&lights[i].Intensity, 0.01f, 0.0f, FLT_MAX);
 				if (lights[i].Type != LIGHT_TYPE_POINT) {
 					ImGui::DragFloat3("Direction", (float*)&lights[i].Direction, 0.01f);
@@ -592,6 +592,9 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 				if (lights[i].Type == LIGHT_TYPE_SPOT) {
 					ImGui::DragFloat("Inner Angle", (float*)&lights[i].SpotInnerAngle, 0.01f, 0.0f, lights[i].SpotOuterAngle);
 					ImGui::DragFloat("Outer Angle", (float*)&lights[i].SpotOuterAngle, 0.01f, lights[i].SpotInnerAngle, 360.0f);
+					if (lights[i].SpotInnerAngle > lights[i].SpotOuterAngle) {
+						lights[i].SpotOuterAngle = lights[i].SpotInnerAngle;
+					}
 				}
 
 				ImGui::TreePop();
