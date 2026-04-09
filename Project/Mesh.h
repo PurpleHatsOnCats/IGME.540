@@ -29,4 +29,6 @@ public:
 
 	Mesh(const char* name, Vertex* vertices, unsigned int vertCount, unsigned int* indices, unsigned int indexCount);
 	Mesh(const char* name, const char* filename);
+
+	void CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices, int numIndices);
 };
