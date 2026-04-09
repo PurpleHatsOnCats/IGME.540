@@ -30,7 +30,7 @@ VertexToPixel main( VertexShaderInput input )
 	//   a perspective projection matrix, which we'll get to in the future).
     float4 worldPos = mul(world, float4(input.localPosition, 1.0f));
 	matrix vp = mul(projection, view);
-    output.worldPosition = worldPos;
+    output.worldPosition = worldPos.xyz;
     output.screenPosition = mul(vp, worldPos);
     output.normal = mul((float3x3) worldInvTranspose, input.normal);
     output.texCoord = input.texCoord;

@@ -67,6 +67,39 @@ Game::Game()
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
 	
 	pixelShaderData.ambientColor = XMFLOAT3(0.1f, 0.1f,0.25f);
+
+	// Create Lights
+	lights = std::vector<Light>();
+	lights.push_back({});
+	lights[0].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[0].Direction = XMFLOAT3(1, 0, 0);
+	lights[0].Color = XMFLOAT3(0.2f, 1.0f, 0.2f);
+	lights[0].Intensity = 0.5f;
+	lights.push_back({});
+	lights[1].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[1].Direction = XMFLOAT3(-1, 0, 0);
+	lights[1].Color = XMFLOAT3(0.2f, 0.2f, 1.0f);
+	lights[1].Intensity = 0.5f;
+	lights.push_back({});
+	lights[2].Type = LIGHT_TYPE_SPOT;
+	lights[2].Direction = XMFLOAT3(0, -1, 0);
+	lights[2].Position = XMFLOAT3(12, 2.5f, 5);
+	lights[2].Color = XMFLOAT3(1.0f, 1.0f, 0.2f);
+	lights[2].Intensity = 10.0f;
+	lights[2].Range = 10.0f;
+	lights[2].SpotInnerAngle = 10.0f;
+	lights[2].SpotOuterAngle = 15.0f;
+	lights.push_back({});
+	lights[3].Type = LIGHT_TYPE_DIRECTIONAL;
+	lights[3].Direction = XMFLOAT3(0, 0, 1);
+	lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	lights[3].Intensity = 0.5f;
+	lights.push_back({});
+	lights[4].Type = LIGHT_TYPE_POINT;
+	lights[4].Position = XMFLOAT3(6, 0, 0);
+	lights[4].Color = XMFLOAT3(1.0f, 0.2f, 1.0f);
+	lights[4].Intensity = 2.0f;
+	lights[4].Range = 15.0f;
 }
 
 
@@ -305,6 +338,12 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		pixelShaderData.time = totalTime;
 		pixelShaderData.cameraPosition = cameras[selectedCamera]->GetTransform()->GetPosition();
+
+		// Copy light data into ps buffer struct
+		pixelShaderData.numLights = (int)lights.size();
+		Light* lightsArray = lights.data();
+		memcpy(&pixelShaderData.lights, lightsArray, sizeof(Light) * pixelShaderData.numLights);
+		
 	}
 
 	// DRAW geometry
@@ -523,7 +562,52 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 			}
 		}
 		ImGui::TreePop();
+		
 	}
+	if (ImGui::TreeNode("Lights")) {
+		for (unsigned int i = 0; i < lights.size(); i++) {
+			char name[8] = "Light ";
+			strcat_s(name, std::to_string(i).c_str());
+			if (ImGui::TreeNode(name)) {
+
+				// Dropdown for light types
+				const char* lightTypes[] = { "Directional","Point","Spot" };
+				if (ImGui::BeginCombo("Light Type", lightTypes[lights[i].Type])) {
+					for (int n = 0; n < IM_COUNTOF(lightTypes); n++)
+					{
+						const bool is_selected = (lights[i].Type == n);
+						if (ImGui::Selectable(lightTypes[n], is_selected))
+							lights[i].Type = n;
+
+						// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+						if (is_selected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+				ImGui::ColorEdit3("Color", (float*)&lights[i].Color, ImGuiColorEditFlags_Float);
+				ImGui::DragFloat("Intensity", (float*)&lights[i].Intensity, 0.01f, 0.0f, FLT_MAX);
+				if (lights[i].Type != LIGHT_TYPE_POINT) {
+					ImGui::DragFloat3("Direction", (float*)&lights[i].Direction, 0.01f);
+				}
+				if (lights[i].Type != LIGHT_TYPE_DIRECTIONAL) {
+					ImGui::DragFloat3("Position", (float*)&lights[i].Position, 0.01f);
+					ImGui::DragFloat("Range", (float*)&lights[i].Range, 0.01f, 0.0f, FLT_MAX);
+				}
+				if (lights[i].Type == LIGHT_TYPE_SPOT) {
+					ImGui::DragFloat("Inner Angle", (float*)&lights[i].SpotInnerAngle, 0.01f, 0.0f, lights[i].SpotOuterAngle);
+					ImGui::DragFloat("Outer Angle", (float*)&lights[i].SpotOuterAngle, 0.01f, lights[i].SpotInnerAngle, 360.0f);
+					if (lights[i].SpotInnerAngle > lights[i].SpotOuterAngle) {
+						lights[i].SpotOuterAngle = lights[i].SpotInnerAngle;
+					}
+				}
+
+				ImGui::TreePop();
+			}
+		}
+		ImGui::TreePop();
+	}
+
 	ImGui::End();
 }
 
