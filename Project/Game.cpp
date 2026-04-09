@@ -210,6 +210,34 @@ void Game::CreateGeometry()
 		FixPath(L"../../Assets/Textures/StainDecal.png").c_str(),
 		nullptr,
 		srv_Stain.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cobble;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/cobblestone.png").c_str(),
+		nullptr,
+		srv_Cobble.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cobble_Normals;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/cobblestone_normals.png").c_str(),
+		nullptr,
+		srv_Cobble_Normals.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cushion;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/cushion.png").c_str(),
+		nullptr,
+		srv_Cushion.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cushion_Normals;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/cushion_normals.png").c_str(),
+		nullptr,
+		srv_Cushion_Normals.GetAddressOf());
 
 	ComPtr<ID3D11SamplerState> samplerState;
 	D3D11_SAMPLER_DESC sampDesc = {};
@@ -232,27 +260,38 @@ void Game::CreateGeometry()
 	XMFLOAT4 white = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"VertexShader.cso");
+	ComPtr<ID3D11VertexShader> vertexShaderNormals = LoadVertexShader(L"NormalMappingVS.cso");
+
 	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"PixelShader.cso");
 	ComPtr<ID3D11PixelShader> debugUVsPSShader = LoadPixelShader(L"DebugUVsPS.cso");
 	ComPtr<ID3D11PixelShader> debugNormalsPSShader = LoadPixelShader(L"DebugNormalsPS.cso");
 	ComPtr<ID3D11PixelShader> customPSShader = LoadPixelShader(L"CustomPS.cso");
 	ComPtr<ID3D11PixelShader> twoTexturePSShader = LoadPixelShader(L"TwoTexturePS.cso");
+	ComPtr<ID3D11PixelShader> pixelShaderNormals = LoadPixelShader(L"NormalMappingPS.cso");
 
 	// Create Materials
 	materials = std::vector<std::shared_ptr<Material>>();
-	materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Brick"));
+	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Cobblestone"));
 	materials.at(0)->AddSampler(0, samplerState);
-	materials.at(0)->AddTextureSRV(0, srv_RedBrick);
-	materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Wood"));
+	materials.at(0)->AddTextureSRV(0, srv_Cobble);
+	materials.at(0)->AddTextureSRV(1, srv_Cobble_Normals);
+	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Cushion"));
 	materials.at(1)->AddSampler(0, samplerState);
-	materials.at(1)->AddTextureSRV(0, srv_WoodFloor);
+	materials.at(1)->AddTextureSRV(0, srv_Cushion);
+	materials.at(1)->AddTextureSRV(1, srv_Cushion_Normals);
+	//materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Brick"));
+	//materials.at(2)->AddSampler(0, samplerState);
+	//materials.at(2)->AddTextureSRV(0, srv_RedBrick);
+	/*materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Wood"));
+	materials.at(3)->AddSampler(0, samplerState);
+	materials.at(3)->AddTextureSRV(0, srv_WoodFloor);
 	materials.push_back(std::make_shared<Material>(white, vertexShader, twoTexturePSShader, "Combination"));
-	materials.at(2)->AddSampler(0, samplerState);
-	materials.at(2)->AddTextureSRV(0, srv_WoodFloor);
-	materials.at(2)->AddTextureSRV(1, srv_Stain);
-	materials.push_back(std::make_shared<Material>(blue, vertexShader, debugUVsPSShader, "UV Debug"));
-	materials.push_back(std::make_shared<Material>(blue, vertexShader, debugNormalsPSShader, "Normal Debug"));
-	materials.push_back(std::make_shared<Material>(blue, vertexShader, customPSShader, "Custom Shader"));
+	materials.at(4)->AddSampler(0, samplerState);
+	materials.at(4)->AddTextureSRV(0, srv_WoodFloor);
+	materials.at(4)->AddTextureSRV(1, srv_Stain);
+	materials.push_back(std::make_shared<Material>(blue, vertexShader, debugUVsPSShader, "UV Debug"));*/
+	//materials.push_back(std::make_shared<Material>(blue, vertexShader, debugNormalsPSShader, "Normal Debug"));
+	//materials.push_back(std::make_shared<Material>(blue, vertexShader, customPSShader, "Custom Shader"));
 	
 	
 	// Create meshes from obj files
@@ -343,7 +382,6 @@ void Game::Draw(float deltaTime, float totalTime)
 		pixelShaderData.numLights = (int)lights.size();
 		Light* lightsArray = lights.data();
 		memcpy(&pixelShaderData.lights, lightsArray, sizeof(Light) * pixelShaderData.numLights);
-		
 	}
 
 	// DRAW geometry

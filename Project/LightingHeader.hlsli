@@ -18,6 +18,19 @@ struct VertexToPixel
     float3 normal :			NORMAL;
     float3 worldPosition :	POSITION;
 };
+struct V2PTangent
+{
+	// Data type
+	//  |
+	//  |   Name          Semantic
+	//  |    |                |
+	//  v    v                v
+    float4 screenPosition : SV_POSITION;
+    float2 texCoord : TEXCOORD;
+    float3 normal : NORMAL;
+    float3 worldPosition : POSITION;
+    float3 tangent : TANGENT;
+};
 
 // Struct representing a single vertex worth of data
 // - This should match the vertex definition in our C++ code
@@ -70,7 +83,7 @@ float4 directionalLight(float3 worldPosition, float3 dirToCamera, float3 normal,
     
     float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
     float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
-    return diffuseTerm + specularTerm;
+    return diffuseTerm + specularTerm * any(diffuseTerm);
 }
 float4 pointLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
 {
@@ -80,7 +93,7 @@ float4 pointLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light
     
     float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
     float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
-    return (diffuseTerm + specularTerm) * attenuationFactor;
+    return (diffuseTerm + specularTerm * any(diffuseTerm)) * attenuationFactor;
 }
 float4 spotLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
 {
@@ -93,5 +106,31 @@ float4 spotLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light 
     
     return pointTerm * saturate((cosOuter - pixelAngle) / falloffRange);
 }
-
+float4 calculateLight(float3 worldPosition, float4 surfaceColor, float3 normal, float3 dirToCamera, int numLights, 
+                        Light lights[MAX_LIGHTS], float3 ambientColor)
+{
+    float4 c = float4(0, 0, 0, 0);
+    
+    for (int i = 0; i < numLights; i++)
+    {
+        switch (lights[i].Type)
+        {
+            case LIGHT_TYPE_DIRECTIONAL:
+                c += directionalLight(worldPosition, dirToCamera, normal, lights[i], surfaceColor);
+                break;
+            case LIGHT_TYPE_POINT:
+                c += pointLight(worldPosition, dirToCamera, normal, lights[i], surfaceColor);
+                break;
+            case LIGHT_TYPE_SPOT:
+                c += spotLight(worldPosition, dirToCamera, normal, lights[i], surfaceColor);
+                break;
+        }
+    }
+    
+    // Ambient
+    c += float4(ambientColor, 1) * surfaceColor;
+    // No specular constant yet...
+    
+    return c;
+}
 #endif
