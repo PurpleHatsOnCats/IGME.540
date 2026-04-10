@@ -66,7 +66,7 @@ Game::Game()
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(-2,2,-3), XMConvertToRadians(45.0f), 0.01f, 100.0f, "Second Camera"));
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
 	
-	pixelShaderData.ambientColor = XMFLOAT3(0.1f, 0.1f,0.25f);
+	pixelShaderData.ambientColor = XMFLOAT3(0.5f, 0.6f,0.5f);
 
 	// Create Lights
 	lights = std::vector<Light>();
@@ -261,6 +261,7 @@ void Game::CreateGeometry()
 
 	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"VertexShader.cso");
 	ComPtr<ID3D11VertexShader> vertexShaderNormals = LoadVertexShader(L"NormalMappingVS.cso");
+	ComPtr<ID3D11VertexShader> vsSky = LoadVertexShader(L"SkyVS.cso");
 
 	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"PixelShader.cso");
 	ComPtr<ID3D11PixelShader> debugUVsPSShader = LoadPixelShader(L"DebugUVsPS.cso");
@@ -268,6 +269,7 @@ void Game::CreateGeometry()
 	ComPtr<ID3D11PixelShader> customPSShader = LoadPixelShader(L"CustomPS.cso");
 	ComPtr<ID3D11PixelShader> twoTexturePSShader = LoadPixelShader(L"TwoTexturePS.cso");
 	ComPtr<ID3D11PixelShader> pixelShaderNormals = LoadPixelShader(L"NormalMappingPS.cso");
+	ComPtr<ID3D11PixelShader> psSky = LoadPixelShader(L"SkyPS.cso");
 
 	// Create Materials
 	materials = std::vector<std::shared_ptr<Material>>();
@@ -302,6 +304,21 @@ void Game::CreateGeometry()
 	shapes.push_back(std::make_shared<Mesh>("Quad Double Sided", FixPath("../../Assets/Meshes/quad_double_sided.obj").c_str()));
 	shapes.push_back(std::make_shared<Mesh>("Sphere", FixPath("../../Assets/Meshes/sphere.obj").c_str()));
 	shapes.push_back(std::make_shared<Mesh>("Torus", FixPath("../../Assets/Meshes/torus.obj").c_str()));
+
+	// Create sky
+	sky = std::make_shared<Sky>(
+		shapes[0],
+		samplerState, 
+		Sky::CreateCubemap(
+			FixPath(L"../../Assets/Textures/Cold Sunset/right.png").c_str(),
+			FixPath(L"../../Assets/Textures/Cold Sunset/left.png").c_str(),
+			FixPath(L"../../Assets/Textures/Cold Sunset/up.png").c_str(),
+			FixPath(L"../../Assets/Textures/Cold Sunset/down.png").c_str(),
+			FixPath(L"../../Assets/Textures/Cold Sunset/front.png").c_str(),
+			FixPath(L"../../Assets/Textures/Cold Sunset/back.png").c_str()),
+		vsSky,
+		psSky
+		);
 
 	// Create game entities
 	for (int i = 0; i < materials.size(); i++) {
@@ -374,6 +391,8 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		vertexShaderData.view = cameras[selectedCamera]->GetViewMatrix();
 		vertexShaderData.projection = cameras[selectedCamera]->GetProjectionMatrix();
+		vertexShaderDataSky.view = vertexShaderData.view;
+		vertexShaderDataSky.projection = vertexShaderData.projection;
 
 		pixelShaderData.time = totalTime;
 		pixelShaderData.cameraPosition = cameras[selectedCamera]->GetTransform()->GetPosition();
@@ -414,6 +433,15 @@ void Game::Draw(float deltaTime, float totalTime)
 			gameEntities.at(i)->GetMaterial()->BindTexturesAndSamplers();
 			gameEntities.at(i)->Draw();
 		}
+
+		// Draw Sky
+		Graphics::FillAndBindNextConstantBuffer(
+			&vertexShaderDataSky,
+			sizeof(VertexShaderExternalDataSky),
+			D3D11_VERTEX_SHADER,
+			0
+		);
+		sky->Draw();
 
 		ImGui::Render(); // Turns this frame’s UI into renderable triangles
 		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // Draws it to the screen
@@ -639,16 +667,10 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 						lights[i].SpotOuterAngle = lights[i].SpotInnerAngle;
 					}
 				}
-
 				ImGui::TreePop();
 			}
 		}
 		ImGui::TreePop();
 	}
-
 	ImGui::End();
 }
-
-
-
-

@@ -30,7 +30,7 @@ float4 main(V2PTangent input) : SV_TARGET
     float4 surfaceColor = colorTint * SurfaceTexture.Sample(BasicSampler, input.texCoord * uvscale + uvoffset);
     float3 dirToCamera = normalize(input.worldPosition - cameraPosition);
     
-    float3 unpackedNormal = (NormalTexture.Sample(BasicSampler, input.texCoord * uvscale + uvoffset) * 2 - 1);
+    float3 unpackedNormal = (float3)(NormalTexture.Sample(BasicSampler, input.texCoord * uvscale + uvoffset) * 2 - 1);
     
     float3 N = normalize(input.normal);
     float3 T = normalize(input.tangent - dot(input.tangent,N) * N);

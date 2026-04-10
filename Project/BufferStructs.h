@@ -20,3 +20,8 @@ public:
 	int numLights;
 	Light lights[16];
 };
+struct VertexShaderExternalDataSky {
+public:
+	DirectX::XMFLOAT4X4 view;
+	DirectX::XMFLOAT4X4 projection;
+};

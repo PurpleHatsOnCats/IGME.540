@@ -11,6 +11,7 @@
 #include "ColorMath.h"
 #include <WICTextureLoader.h>
 #include "Lights.h"
+#include "Sky.h"
 
 using namespace Microsoft::WRL;
 class Game
@@ -49,6 +50,7 @@ private:
 	int sliderValue = 0;
 	VertexShaderExternalData vertexShaderData;
 	PixelShaderExternalData pixelShaderData;
+	VertexShaderExternalDataSky vertexShaderDataSky;
 
 	std::vector<std::shared_ptr<Mesh>> shapes;
 	std::vector<std::shared_ptr<Material>> materials;
@@ -59,5 +61,6 @@ private:
 	XMFLOAT3 colorGradient;
 
 	std::vector<Light> lights;
+	std::shared_ptr<Sky> sky;
 };
 
