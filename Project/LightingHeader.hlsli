@@ -70,29 +70,39 @@ struct Light
 
 float3 diffuse(float3 dirToLight, float3 normal, Light light)
 {
+    // Lambert Model
     return saturate(dot(dirToLight, normal) * light.Color * light.Intensity);
 }
 
 float3 specular(float3 dirToLight, float3 dirToCamera, float3 normal, Light light)
 {
+    // Phong Model
     return pow(saturate(dot(reflect(dirToLight, normal), dirToCamera)), 128) * light.Color * light.Intensity;
 }
 float4 directionalLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
 {
     float3 dirToLight = -normalize(light.Direction);
     
+    // Calculate Terms
     float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
     float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
+    
+    // Combine Terms
     return diffuseTerm + specularTerm * any(diffuseTerm);
 }
 float4 pointLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
 {
     float3 toLight = light.Position - worldPosition;
     float3 dirToLight = normalize(toLight);
+    
+    // Dim light based on distance
     float attenuationFactor = pow(max(0, 1.0f - dot(toLight, toLight) / (light.Range * light.Range)), 2);
     
+    // Calculate terms
     float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
     float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
+    
+    // Combine terms, adjust specular for edge cases
     return (diffuseTerm + specularTerm * any(diffuseTerm)) * attenuationFactor;
 }
 float4 spotLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
