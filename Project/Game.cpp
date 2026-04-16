@@ -333,6 +333,7 @@ void Game::CreateGeometry()
 			std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(j), materials.at(i), name);
 			gameEntity->GetTransform()->SetPosition(j * 3.0f, i * 3.0f, 5.0f);
 			gameEntities.push_back(gameEntity);
+			delete(name);
 		}
 	}
 }
