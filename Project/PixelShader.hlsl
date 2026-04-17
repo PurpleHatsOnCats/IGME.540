@@ -1,6 +1,8 @@
 #include "LightingHeader.hlsli"
 
-Texture2D SurfaceTexture : register(t0); // "t" registers for textures
+Texture2D AlbedoTexture : register(t0); // "t" registers for textures
+Texture2D RoughnessTexture : register(t1); // "t" registers for textures
+Texture2D MetalTexture : register(t2); // "t" registers for textures
 SamplerState BasicSampler : register(s0); // "s" registers for samplers
 
 cbuffer ExternalData : register(b0)
@@ -24,12 +26,22 @@ cbuffer ExternalData : register(b0)
 //    "put the output of this into the current render target"
 // - Named "main" because that's the default the shader compiler looks for
 // --------------------------------------------------------
-float4 main(VertexToPixel input) : SV_TARGET
+float4 main(V2PTangent input) : SV_TARGET
 {
-    float4 surfaceColor = colorTint * SurfaceTexture.Sample(BasicSampler, input.texCoord * uvscale + uvoffset);
-    float3 normal = normalize(input.normal);
+    float4 albedoColor = colorTint * pow(AlbedoTexture.Sample(BasicSampler, input.texCoord * uvscale + uvoffset), 2.2);
     float3 dirToCamera = normalize(input.worldPosition - cameraPosition);
     
-    return calculateLight(input.worldPosition, surfaceColor, normal, dirToCamera, numLights, lights, ambientColor);
+    
+    float3 normal = normalize(input.normal);
+    float roughness = RoughnessTexture.Sample(BasicSampler, input.texCoord).r;
+    float metal = MetalTexture.Sample(BasicSampler, input.texCoord).r;
+    
+    // Specular color determination -----------------
+    // Assume albedo texture is actually holding specular color where metalness == 1
+    // Note the use of lerp here - metal is generally 0 or 1, but might be in between
+    // because of linear texture sampling, so we lerp the specular color to match
+    float3 specularColor = lerp(0.04f, albedoColor.rgb, metal);
+ 
+    return pow(calculateLight(normal, dirToCamera, roughness, specularColor, metal, input.worldPosition, albedoColor, numLights, lights, ambientColor), 1.0 / 2.2);
 }
 

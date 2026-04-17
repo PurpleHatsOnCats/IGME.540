@@ -1,6 +1,5 @@
 #ifndef __LIGHTING_HEADER__ // Each .hlsli file needs a unique identifier!
 #define __LIGHTING_HEADER__
-
 // Struct representing the data we expect to receive from earlier pipeline stages
 // - Should match the output of our corresponding vertex shader
 // - The name of the struct itself is unimportant
@@ -79,35 +78,80 @@ float3 specular(float3 dirToLight, float3 dirToCamera, float3 normal, Light ligh
     // Phong Model
     return pow(saturate(dot(reflect(dirToLight, normal), dirToCamera)), 128) * light.Color * light.Intensity;
 }
-float4 directionalLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
+static const float pi = 3.14159265359f;
+float NormalDistribution(float3 n, float3 h, float r)
+{
+    // GGX, or Ground Glass X (Trowbridge-Reitz)
+    return r * r / (pi * pow(pow(saturate(dot(n, h)), 2) * (r * r - 1) + 1, 2));
+
+}
+float GeometricShadowing(float3 n, float3 v, float3 l, float r)
+{
+    // k = remapped roughness
+    float k = pow(r + 1, 2) / 8;
+    float ndotv = saturate(dot(n, v));
+    float ndotl = saturate(dot(n, l));
+    // Removed ndotv and ndotl from nominator to match MicrofacetBRDF()
+    return (1 / (ndotv * (1 - k) + k)) * (1 / (ndotl * (1 - k) + k));
+
+}
+float3 Fresnel(float3 v, float3 h, float3 f0)
+{
+    return f0 + (1 - f0) * pow(1 - saturate(dot(v, h)), 5);
+}
+float3 MicrofacetBRDF(float ND, float GS, float3 F)
+{
+    return ND * GS * F / 4;
+}
+float3 DiffuseEnergyConserve(float3 diffuse, float3 F, float metalness)
+{
+    return diffuse * (1 - F) * (1 - metalness);
+}
+float4 directionalLight(float3 normal, float3 dirToCamera, float roughness, float3 f0, float metal, Light light, float4 surfaceColor)
 {
     float3 dirToLight = -normalize(light.Direction);
+    float3 h = normalize(dirToCamera + dirToLight);
+    
+    float ND = NormalDistribution(normal, h, roughness);
+    float GS = GeometricShadowing(normal, dirToCamera, dirToLight, roughness);
+    float3 F = Fresnel(dirToCamera, h, f0);
     
     // Calculate Terms
-    float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
-    float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
+    float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1);
+    float4 specularTerm = float4(MicrofacetBRDF(ND, GS, F), 1);
+    
+    // Balance / energy convservation
+    diffuseTerm = float4(DiffuseEnergyConserve(diffuseTerm.xyz, F, metal),1) * surfaceColor;
     
     // Combine Terms
     return diffuseTerm + specularTerm * any(diffuseTerm);
 }
-float4 pointLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
+float4 pointLight(float3 normal, float3 dirToCamera, float roughness, float3 f0, float metal, Light light, float4 surfaceColor, float3 worldPosition)
 {
     float3 toLight = light.Position - worldPosition;
-    float3 dirToLight = normalize(toLight);
+    float3 dirToLight = normalize(toLight);    
+    float3 h = normalize(dirToCamera + dirToLight);
     
+    float ND = NormalDistribution(normal, h, roughness);
+    float GS = GeometricShadowing(normal, dirToCamera, dirToLight, roughness);
+    float3 F = Fresnel(dirToCamera, h, f0);
+    
+    // Calculate Terms
+    float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1);
+    float4 specularTerm = float4(MicrofacetBRDF(ND, GS, F), 1);
+    
+    // Balance / energy convservation
+    diffuseTerm = float4(DiffuseEnergyConserve(diffuseTerm.xyz, F, metal), 1) * surfaceColor;
+        
     // Dim light based on distance
     float attenuationFactor = pow(max(0, 1.0f - dot(toLight, toLight) / (light.Range * light.Range)), 2);
-    
-    // Calculate terms
-    float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1) * surfaceColor;
-    float4 specularTerm = float4(specular(dirToLight, dirToCamera, normal, light), 1);
     
     // Combine terms, adjust specular for edge cases
     return (diffuseTerm + specularTerm * any(diffuseTerm)) * attenuationFactor;
 }
-float4 spotLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light light, float4 surfaceColor)
+float4 spotLight(float3 normal, float3 dirToCamera, float roughness, float3 f0, float metal, Light light, float4 surfaceColor, float3 worldPosition)
 {
-    float4 pointTerm = pointLight(worldPosition, dirToCamera, normal, light, surfaceColor);
+    float4 pointTerm = pointLight(normal, dirToCamera, roughness, f0, metal, light, surfaceColor, worldPosition);
     
     float pixelAngle = saturate(dot(normalize(worldPosition - light.Position), normalize(light.Direction)));
     float cosInner = cos(radians(light.SpotInnerAngle));
@@ -116,8 +160,8 @@ float4 spotLight(float3 worldPosition, float3 dirToCamera, float3 normal, Light 
     
     return pointTerm * saturate((cosOuter - pixelAngle) / falloffRange);
 }
-float4 calculateLight(float3 worldPosition, float4 surfaceColor, float3 normal, float3 dirToCamera, int numLights, 
-                        Light lights[MAX_LIGHTS], float3 ambientColor)
+float4 calculateLight(float3 normal, float3 dirToCamera, float roughness, float3 f0, float metal, float3 worldPosition, float4 surfaceColor, int numLights, 
+    Light lights[MAX_LIGHTS], float3 ambientColor)
 {
     float4 c = float4(0, 0, 0, 0);
     
@@ -126,19 +170,19 @@ float4 calculateLight(float3 worldPosition, float4 surfaceColor, float3 normal, 
         switch (lights[i].Type)
         {
             case LIGHT_TYPE_DIRECTIONAL:
-                c += directionalLight(worldPosition, dirToCamera, normal, lights[i], surfaceColor);
+                c += directionalLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor);
                 break;
             case LIGHT_TYPE_POINT:
-                c += pointLight(worldPosition, dirToCamera, normal, lights[i], surfaceColor);
+                c += pointLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor, worldPosition);
                 break;
             case LIGHT_TYPE_SPOT:
-                c += spotLight(worldPosition, dirToCamera, normal, lights[i], surfaceColor);
+                c += spotLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor, worldPosition);
                 break;
         }
     }
     
     // Ambient
-    c += float4(ambientColor, 1) * surfaceColor;
+    //c += float4(ambientColor, 1) * surfaceColor;
     // No specular constant yet...
     
     return c;

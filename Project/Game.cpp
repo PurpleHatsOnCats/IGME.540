@@ -189,55 +189,91 @@ ComPtr<ID3D11PixelShader> Game::LoadPixelShader(std::wstring filename)
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_RedBrick;
+	// Load textures
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_cobble_albedo;
 	DirectX::CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
-		FixPath(L"../../Assets/Textures/RedBrick.jpg").c_str(),
+		FixPath(L"../../Assets/Textures/cobblestone_albedo.png").c_str(),
 		nullptr,
-		srv_RedBrick.GetAddressOf());
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_WoodFloor;
+		srv_cobble_albedo.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_cobble_roughness;
 	DirectX::CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
-		FixPath(L"../../Assets/Textures/WoodFloor.jpg").c_str(),
+		FixPath(L"../../Assets/Textures/cobblestone_roughness.png").c_str(),
 		nullptr,
-		srv_WoodFloor.GetAddressOf());
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Stain;
+		srv_cobble_roughness.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_cobble_metal;
 	DirectX::CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
-		FixPath(L"../../Assets/Textures/StainDecal.png").c_str(),
+		FixPath(L"../../Assets/Textures/cobblestone_metal.png").c_str(),
 		nullptr,
-		srv_Stain.GetAddressOf());
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cobble;
-	DirectX::CreateWICTextureFromFile(
-		Graphics::Device.Get(),
-		Graphics::Context.Get(),
-		FixPath(L"../../Assets/Textures/cobblestone.png").c_str(),
-		nullptr,
-		srv_Cobble.GetAddressOf());
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cobble_Normals;
+		srv_cobble_metal.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_cobble_normals;
 	DirectX::CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
 		FixPath(L"../../Assets/Textures/cobblestone_normals.png").c_str(),
 		nullptr,
-		srv_Cobble_Normals.GetAddressOf());
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cushion;
+		srv_cobble_normals.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_paint_albedo;
 	DirectX::CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
-		FixPath(L"../../Assets/Textures/cushion.png").c_str(),
+		FixPath(L"../../Assets/Textures/paint_albedo.png").c_str(),
 		nullptr,
-		srv_Cushion.GetAddressOf());
-	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_Cushion_Normals;
+		srv_paint_albedo.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_paint_roughness;
 	DirectX::CreateWICTextureFromFile(
 		Graphics::Device.Get(),
 		Graphics::Context.Get(),
-		FixPath(L"../../Assets/Textures/cushion_normals.png").c_str(),
+		FixPath(L"../../Assets/Textures/paint_roughness.png").c_str(),
 		nullptr,
-		srv_Cushion_Normals.GetAddressOf());
+		srv_paint_roughness.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_paint_metal;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/paint_metal.png").c_str(),
+		nullptr,
+		srv_paint_metal.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_paint_normals;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/paint_normals.png").c_str(),
+		nullptr,
+		srv_paint_normals.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_scratched_albedo;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/scratched_albedo.png").c_str(),
+		nullptr,
+		srv_scratched_albedo.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_scratched_roughness;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/scratched_roughness.png").c_str(),
+		nullptr,
+		srv_scratched_roughness.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_scratched_metal;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/scratched_metal.png").c_str(),
+		nullptr,
+		srv_scratched_metal.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_scratched_normals;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/scratched_normals.png").c_str(),
+		nullptr,
+		srv_scratched_normals.GetAddressOf());
 
 	ComPtr<ID3D11SamplerState> samplerState;
 	D3D11_SAMPLER_DESC sampDesc = {};
@@ -275,12 +311,22 @@ void Game::CreateGeometry()
 	materials = std::vector<std::shared_ptr<Material>>();
 	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Cobblestone"));
 	materials.at(0)->AddSampler(0, samplerState);
-	materials.at(0)->AddTextureSRV(0, srv_Cobble);
-	materials.at(0)->AddTextureSRV(1, srv_Cobble_Normals);
-	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Cushion"));
+	materials.at(0)->AddTextureSRV(0, srv_cobble_albedo);
+	materials.at(0)->AddTextureSRV(1, srv_cobble_roughness);
+	materials.at(0)->AddTextureSRV(2, srv_cobble_metal);
+	materials.at(0)->AddTextureSRV(3, srv_cobble_normals);
+	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Paint"));
 	materials.at(1)->AddSampler(0, samplerState);
-	materials.at(1)->AddTextureSRV(0, srv_Cushion);
-	materials.at(1)->AddTextureSRV(1, srv_Cushion_Normals);
+	materials.at(1)->AddTextureSRV(0, srv_paint_albedo);
+	materials.at(1)->AddTextureSRV(1, srv_paint_roughness);
+	materials.at(1)->AddTextureSRV(2, srv_paint_metal);
+	materials.at(1)->AddTextureSRV(3, srv_paint_normals);
+	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Scratched"));
+	materials.at(2)->AddSampler(0, samplerState);
+	materials.at(2)->AddTextureSRV(0, srv_scratched_albedo);
+	materials.at(2)->AddTextureSRV(1, srv_scratched_roughness);
+	materials.at(2)->AddTextureSRV(2, srv_scratched_metal);
+	materials.at(2)->AddTextureSRV(3, srv_scratched_normals);
 	//materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Brick"));
 	//materials.at(2)->AddSampler(0, samplerState);
 	//materials.at(2)->AddTextureSRV(0, srv_RedBrick);
@@ -333,7 +379,7 @@ void Game::CreateGeometry()
 			std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(j), materials.at(i), name);
 			gameEntity->GetTransform()->SetPosition(j * 3.0f, i * 3.0f, 5.0f);
 			gameEntities.push_back(gameEntity);
-			delete(name);
+			delete[](name);
 		}
 	}
 }
