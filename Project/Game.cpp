@@ -161,6 +161,7 @@ ComPtr<ID3D11VertexShader> Game::LoadVertexShader(std::wstring filename)
 		inputElements[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
 
 		// Create the input layout, verifying our description against actual shader code
+		inputLayout.Reset();
 		Graphics::Device->CreateInputLayout(
 			inputElements,							// An array of descriptions
 			4,										// How many elements in that array?
