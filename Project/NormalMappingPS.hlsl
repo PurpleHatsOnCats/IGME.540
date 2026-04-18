@@ -30,7 +30,7 @@ cbuffer ExternalData : register(b0)
 float4 main(V2PTangent input) : SV_TARGET
 {
     float4 albedoColor = colorTint * pow(AlbedoTexture.Sample(BasicSampler, input.texCoord * uvscale + uvoffset), 2.2);
-    float3 dirToCamera = normalize(input.worldPosition - cameraPosition);
+    float3 dirToCamera = normalize(cameraPosition - input.worldPosition);
     
     float3 unpackedNormal = (float3)(NormalTexture.Sample(BasicSampler, input.texCoord * uvscale + uvoffset) * 2 - 1);
     
@@ -48,7 +48,7 @@ float4 main(V2PTangent input) : SV_TARGET
     // Note the use of lerp here - metal is generally 0 or 1, but might be in between
     // because of linear texture sampling, so we lerp the specular color to match
     float3 specularColor = lerp(0.04f, albedoColor.rgb, metal);
- 
+    
     return pow(calculateLight(normal, dirToCamera, roughness, specularColor, metal, input.worldPosition, albedoColor, numLights, lights, ambientColor), 1.0 / 2.2);
 }
 

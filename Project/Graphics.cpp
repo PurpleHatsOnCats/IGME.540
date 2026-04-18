@@ -329,7 +329,7 @@ void Graphics::InitializeCbHeap()
 	Context->QueryInterface<ID3D11DeviceContext1>(Context1.GetAddressOf());
 	cbHeapOffsetInBytes = 0;
 
-	cbHeapSizeInBytes = 256 * 10000;
+	cbHeapSizeInBytes = 256 * 100000;
 	cbHeapSizeInBytes = (cbHeapSizeInBytes + 255) / 256 * 256; // alignment
 
 	D3D11_BUFFER_DESC cbDesc = {}; // Sets struct to all zeros

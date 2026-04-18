@@ -38,7 +38,7 @@ Game::Game()
 
 	// Helper method for creating some basic
 	// geometry to draw and some simple camera matrices.
-	CreateGeometry();
+	CreateElements();
 
 	// Set initial graphics API state
 	//  - These settings persist until we change them
@@ -67,39 +67,6 @@ Game::Game()
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
 	
 	pixelShaderData.ambientColor = XMFLOAT3(0.5f, 0.6f,0.5f);
-
-	// Create Lights
-	lights = std::vector<Light>();
-	lights.push_back({});
-	lights[0].Type = LIGHT_TYPE_DIRECTIONAL;
-	lights[0].Direction = XMFLOAT3(1, 0, 0);
-	lights[0].Color = XMFLOAT3(0.2f, 1.0f, 0.2f);
-	lights[0].Intensity = 0.5f;
-	lights.push_back({});
-	lights[1].Type = LIGHT_TYPE_DIRECTIONAL;
-	lights[1].Direction = XMFLOAT3(-1, 0, 0);
-	lights[1].Color = XMFLOAT3(0.2f, 0.2f, 1.0f);
-	lights[1].Intensity = 0.5f;
-	lights.push_back({});
-	lights[2].Type = LIGHT_TYPE_SPOT;
-	lights[2].Direction = XMFLOAT3(0, -1, 0);
-	lights[2].Position = XMFLOAT3(12, 2.5f, 5);
-	lights[2].Color = XMFLOAT3(1.0f, 1.0f, 0.2f);
-	lights[2].Intensity = 10.0f;
-	lights[2].Range = 10.0f;
-	lights[2].SpotInnerAngle = 10.0f;
-	lights[2].SpotOuterAngle = 15.0f;
-	lights.push_back({});
-	lights[3].Type = LIGHT_TYPE_DIRECTIONAL;
-	lights[3].Direction = XMFLOAT3(0, 0, 1);
-	lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
-	lights[3].Intensity = 0.5f;
-	lights.push_back({});
-	lights[4].Type = LIGHT_TYPE_POINT;
-	lights[4].Position = XMFLOAT3(6, 0, 0);
-	lights[4].Color = XMFLOAT3(1.0f, 0.2f, 1.0f);
-	lights[4].Intensity = 2.0f;
-	lights[4].Range = 15.0f;
 }
 
 
@@ -188,7 +155,7 @@ ComPtr<ID3D11PixelShader> Game::LoadPixelShader(std::wstring filename)
 // --------------------------------------------------------
 // Creates the geometry we're going to draw
 // --------------------------------------------------------
-void Game::CreateGeometry()
+void Game::CreateElements()
 {
 	// Load textures
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_cobble_albedo;
@@ -275,6 +242,34 @@ void Game::CreateGeometry()
 		FixPath(L"../../Assets/Textures/scratched_normals.png").c_str(),
 		nullptr,
 		srv_scratched_normals.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_bronze_albedo;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/bronze_albedo.png").c_str(),
+		nullptr,
+		srv_bronze_albedo.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_bronze_roughness;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/bronze_roughness.png").c_str(),
+		nullptr,
+		srv_bronze_roughness.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_bronze_metal;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/bronze_metal.png").c_str(),
+		nullptr,
+		srv_bronze_metal.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_bronze_normals;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/bronze_normals.png").c_str(),
+		nullptr,
+		srv_bronze_normals.GetAddressOf());
 
 	ComPtr<ID3D11SamplerState> samplerState;
 	D3D11_SAMPLER_DESC sampDesc = {};
@@ -328,20 +323,12 @@ void Game::CreateGeometry()
 	materials.at(2)->AddTextureSRV(1, srv_scratched_roughness);
 	materials.at(2)->AddTextureSRV(2, srv_scratched_metal);
 	materials.at(2)->AddTextureSRV(3, srv_scratched_normals);
-	//materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Brick"));
-	//materials.at(2)->AddSampler(0, samplerState);
-	//materials.at(2)->AddTextureSRV(0, srv_RedBrick);
-	/*materials.push_back(std::make_shared<Material>(white, vertexShader, pixelShader, "Wood"));
+	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Bronze"));
 	materials.at(3)->AddSampler(0, samplerState);
-	materials.at(3)->AddTextureSRV(0, srv_WoodFloor);
-	materials.push_back(std::make_shared<Material>(white, vertexShader, twoTexturePSShader, "Combination"));
-	materials.at(4)->AddSampler(0, samplerState);
-	materials.at(4)->AddTextureSRV(0, srv_WoodFloor);
-	materials.at(4)->AddTextureSRV(1, srv_Stain);
-	materials.push_back(std::make_shared<Material>(blue, vertexShader, debugUVsPSShader, "UV Debug"));*/
-	//materials.push_back(std::make_shared<Material>(blue, vertexShader, debugNormalsPSShader, "Normal Debug"));
-	//materials.push_back(std::make_shared<Material>(blue, vertexShader, customPSShader, "Custom Shader"));
-	
+	materials.at(3)->AddTextureSRV(0, srv_bronze_albedo);
+	materials.at(3)->AddTextureSRV(1, srv_bronze_roughness);
+	materials.at(3)->AddTextureSRV(2, srv_bronze_metal);
+	materials.at(3)->AddTextureSRV(3, srv_bronze_normals);	
 	
 	// Create meshes from obj files
 	shapes.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
@@ -383,6 +370,30 @@ void Game::CreateGeometry()
 			delete[](name);
 		}
 	}
+
+	// Create lights
+	lights = std::vector<Light>();
+
+	Light light = {};
+	light.Type = LIGHT_TYPE_DIRECTIONAL;
+	light.Color = XMFLOAT3(1,1,1);
+	light.Intensity = 1.0f;
+	light.Direction = XMFLOAT3(0, 0, 1);
+	lights.push_back(light);
+
+	for (int i = 1; i <= MAX_LIGHTS-1; i++) {
+		// Create Lights
+		light.Type = LIGHT_TYPE_POINT;
+		light.Position = XMFLOAT3(
+			(float)fmod(fmod(i * i * 57.7821f + i * 65.14f, 42.15f), shapes.size() + 6) - 3, 
+			(float)fmod(fmod(i * 5783.9271f, 74.4f), materials.size() * 3 + 3),
+			(float)fmod(fmod(i * 7547.536f, 92.8f), 6.0f) + 2);
+		light.Color = ColorMath::HSLtoRGB(XMFLOAT3(fmod(fmod(i * i * 57.7821f + i * 65.14f, 42.15f), 1.0f), 1, 0.5f));
+		light.Intensity = 10.0f;
+		light.Range = 10.0f;
+		lights.push_back(light);
+	}
+	numLights = 1;
 }
 
 
@@ -446,9 +457,9 @@ void Game::Draw(float deltaTime, float totalTime)
 		pixelShaderData.cameraPosition = cameras[selectedCamera]->GetTransform()->GetPosition();
 
 		// Copy light data into ps buffer struct
-		pixelShaderData.numLights = (int)lights.size();
+		pixelShaderData.numLights = numLights;
 		Light* lightsArray = lights.data();
-		memcpy(&pixelShaderData.lights, lightsArray, sizeof(Light) * pixelShaderData.numLights);
+		memcpy(&pixelShaderData.lights, lightsArray, sizeof(Light) * numLights);
 	}
 
 	// DRAW geometry
@@ -679,8 +690,9 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 		
 	}
 	if (ImGui::TreeNode("Lights")) {
-		for (unsigned int i = 0; i < lights.size(); i++) {
-			char name[8] = "Light ";
+		ImGui::SliderInt("Number of Lights", &numLights, 1, (int)lights.size());
+		for (unsigned int i = 0; i < (unsigned int)numLights; i++) {
+			char name[10] = "Light "; // can take up to 3 digits
 			strcat_s(name, std::to_string(i).c_str());
 			if (ImGui::TreeNode(name)) {
 

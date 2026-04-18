@@ -33,7 +33,7 @@ private:
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
 	ComPtr<ID3D11VertexShader> LoadVertexShader(std::wstring);
 	ComPtr<ID3D11PixelShader> LoadPixelShader(std::wstring);
-	void CreateGeometry();
+	void CreateElements();
 	void BuildUI(float deltaTime, float totalTime);
 
 	// Note the usage of ComPtr below
@@ -61,6 +61,7 @@ private:
 	XMFLOAT3 colorGradient;
 
 	std::vector<Light> lights;
+	int numLights;
 	std::shared_ptr<Sky> sky;
 };
 

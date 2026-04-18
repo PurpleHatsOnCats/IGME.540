@@ -52,7 +52,8 @@ struct VertexShaderInput
 #define LIGHT_TYPE_DIRECTIONAL 0
 #define LIGHT_TYPE_POINT 1
 #define LIGHT_TYPE_SPOT 2
-#define MAX_LIGHTS 128
+#define MAX_LIGHTS 30
+#define MIN_ROUGHNESS 0.0000001
 
 struct Light
 {
@@ -82,13 +83,20 @@ static const float pi = 3.14159265359f;
 float NormalDistribution(float3 n, float3 h, float r)
 {
     // GGX, or Ground Glass X (Trowbridge-Reitz)
-    return r * r / (pi * pow(pow(saturate(dot(n, h)), 2) * (r * r - 1) + 1, 2));
+    // Pre-calculations
+    float NdotH = saturate(dot(n, h));
+    float NdotH2 = NdotH * NdotH;
+    float a = r * r; // Remapping roughness
+    float a2 = max(a * a, MIN_ROUGHNESS);
+    // Denominator to be squared is ((n dot h)^2 * (a^2 - 1) + 1)
+    float denomToSquare = NdotH2 * (a2 - 1) + 1;
+    return a2 / (pi * denomToSquare * denomToSquare);
 
 }
 float GeometricShadowing(float3 n, float3 v, float3 l, float r)
 {
     // k = remapped roughness
-    float k = pow(r + 1, 2) / 8;
+    float k = pow(r + 1, 2) / 8.0f;
     float ndotv = saturate(dot(n, v));
     float ndotl = saturate(dot(n, l));
     // Removed ndotv and ndotl from nominator to match MicrofacetBRDF()
@@ -101,6 +109,7 @@ float3 Fresnel(float3 v, float3 h, float3 f0)
 }
 float3 MicrofacetBRDF(float ND, float GS, float3 F)
 {
+    // Removed ndotv and ndotl from denominator to match GeometricShadowing()
     return ND * GS * F / 4;
 }
 float3 DiffuseEnergyConserve(float3 diffuse, float3 F, float metalness)
@@ -118,7 +127,7 @@ float4 directionalLight(float3 normal, float3 dirToCamera, float roughness, floa
     
     // Calculate Terms
     float4 diffuseTerm = float4(diffuse(dirToLight, normal, light), 1);
-    float4 specularTerm = float4(MicrofacetBRDF(ND, GS, F), 1);
+    float4 specularTerm = float4(MicrofacetBRDF(ND, GS, F), 1) * saturate(dot(normal, dirToLight));
     
     // Balance / energy convservation
     diffuseTerm = float4(DiffuseEnergyConserve(diffuseTerm.xyz, F, metal),1) * surfaceColor;

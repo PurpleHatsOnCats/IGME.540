@@ -1,6 +1,7 @@
 #pragma once
 #include <DirectXMath.h>
 #include "Lights.h"
+#define MAX_LIGHTS 30
 
 struct VertexShaderExternalData {
 public:
@@ -18,7 +19,7 @@ public:
 	float time;
 	DirectX::XMFLOAT3 ambientColor;
 	int numLights;
-	Light lights[16];
+	Light lights[MAX_LIGHTS];
 };
 struct VertexShaderExternalDataSky {
 public:
