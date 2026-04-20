@@ -67,8 +67,49 @@ Game::Game()
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
 	
 	pixelShaderData.ambientColor = XMFLOAT3(0.5f, 0.6f,0.5f);
+
+	CreateShadowMap();
 }
 
+void Game::CreateShadowMap()
+{
+	// Create the actual texture that will be the shadow map
+	shadowMapResolution = 1024;
+	D3D11_TEXTURE2D_DESC shadowDesc = {};
+	shadowDesc.Width = shadowMapResolution; // Ideally a power of 2 (like 1024)
+	shadowDesc.Height = shadowMapResolution; // Ideally a power of 2 (like 1024)
+	shadowDesc.ArraySize = 1;
+	shadowDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE; // using srv and dsv
+	shadowDesc.CPUAccessFlags = 0;
+	shadowDesc.Format = DXGI_FORMAT_R32_TYPELESS; // Reserve 32 bits and the type is determined by the srv(?)
+	shadowDesc.MipLevels = 1;
+	shadowDesc.MiscFlags = 0;
+	shadowDesc.SampleDesc.Count = 1;
+	shadowDesc.SampleDesc.Quality = 0;
+	shadowDesc.Usage = D3D11_USAGE_DEFAULT;
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowTexture;
+	Graphics::Device->CreateTexture2D(&shadowDesc, 0, shadowTexture.GetAddressOf());
+
+	// Create the depth/stencil view
+	D3D11_DEPTH_STENCIL_VIEW_DESC shadowDSDesc = {};
+	shadowDSDesc.Format = DXGI_FORMAT_D32_FLOAT; // 32 bits for one value; depth stencil version
+	shadowDSDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D; // 2D texture
+	shadowDSDesc.Texture2D.MipSlice = 0; // Which mip to use; index 0
+	Graphics::Device->CreateDepthStencilView(
+		shadowTexture.Get(),
+		&shadowDSDesc,
+		shadowDSV.GetAddressOf());
+	// Create the SRV for the shadow map
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT; //  32 bits for one value; shader resource version
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D; // 2D texture
+	srvDesc.Texture2D.MipLevels = 1; // How many mips
+	srvDesc.Texture2D.MostDetailedMip = 0; // index 0; we only have 1 mip
+	Graphics::Device->CreateShaderResourceView(
+		shadowTexture.Get(),
+		&srvDesc,
+		shadowSRV.GetAddressOf());
+}
 
 // --------------------------------------------------------
 // Clean up memory or objects created by this class
@@ -270,6 +311,34 @@ void Game::CreateElements()
 		FixPath(L"../../Assets/Textures/bronze_normals.png").c_str(),
 		nullptr,
 		srv_bronze_normals.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_wood_albedo;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/wood_albedo.png").c_str(),
+		nullptr,
+		srv_wood_albedo.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_wood_roughness;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/wood_roughness.png").c_str(),
+		nullptr,
+		srv_wood_roughness.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_wood_metal;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/wood_metal.png").c_str(),
+		nullptr,
+		srv_wood_metal.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv_wood_normals;
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		FixPath(L"../../Assets/Textures/bronze_normals.png").c_str(),
+		nullptr,
+		srv_wood_normals.GetAddressOf());
 
 	ComPtr<ID3D11SamplerState> samplerState;
 	D3D11_SAMPLER_DESC sampDesc = {};
@@ -294,6 +363,7 @@ void Game::CreateElements()
 	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"VertexShader.cso");
 	ComPtr<ID3D11VertexShader> vertexShaderNormals = LoadVertexShader(L"NormalMappingVS.cso");
 	ComPtr<ID3D11VertexShader> vsSky = LoadVertexShader(L"SkyVS.cso");
+	ComPtr<ID3D11VertexShader> shadowVS = LoadVertexShader(L"ShadowVS.cso");
 
 	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"PixelShader.cso");
 	ComPtr<ID3D11PixelShader> debugUVsPSShader = LoadPixelShader(L"DebugUVsPS.cso");
@@ -329,6 +399,12 @@ void Game::CreateElements()
 	materials.at(3)->AddTextureSRV(1, srv_bronze_roughness);
 	materials.at(3)->AddTextureSRV(2, srv_bronze_metal);
 	materials.at(3)->AddTextureSRV(3, srv_bronze_normals);	
+	materials.push_back(std::make_shared<Material>(white, vertexShaderNormals, pixelShaderNormals, "Wood"));
+	materials.at(4)->AddSampler(0, samplerState);
+	materials.at(4)->AddTextureSRV(0, srv_wood_albedo);
+	materials.at(4)->AddTextureSRV(1, srv_wood_roughness);
+	materials.at(4)->AddTextureSRV(2, srv_wood_metal);
+	materials.at(4)->AddTextureSRV(3, srv_wood_normals);
 	
 	// Create meshes from obj files
 	shapes.push_back(std::make_shared<Mesh>("Cube", FixPath("../../Assets/Meshes/cube.obj").c_str()));
@@ -355,21 +431,33 @@ void Game::CreateElements()
 		);
 
 	// Create game entities
-	for (int i = 0; i < materials.size(); i++) {
-		for (int j = 0; j < shapes.size(); j++) {
+	//for (int i = 0; i < materials.size(); i++) {
+	//	for (int j = 0; j < shapes.size(); j++) {
 
-			// Do some deep memory copy in order to utilize string appending
-			std::string str_name = (std::to_string(i) + std::string(" x ") + std::to_string(j));
-			const std::string::size_type size = str_name.size();
-			char* name = new char[size + 1];   //we need extra char for NUL
-			memcpy(name, str_name.c_str(), size + 1);
+	//		// Do some deep memory copy in order to utilize string appending
+	//		std::string str_name = (std::to_string(i) + std::string(" x ") + std::to_string(j));
+	//		const std::string::size_type size = str_name.size();
+	//		char* name = new char[size + 1];   //we need extra char for NUL
+	//		memcpy(name, str_name.c_str(), size + 1);
 
-			std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(j), materials.at(i), name);
-			gameEntity->GetTransform()->SetPosition(j * 3.0f, i * 3.0f, 5.0f);
-			gameEntities.push_back(gameEntity);
-			delete[](name);
-		}
-	}
+	//		std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(j), materials.at(i), name);
+	//		gameEntity->GetTransform()->SetPosition(j * 3.0f, i * 3.0f, 5.0f);
+	//		gameEntities.push_back(gameEntity);
+	//		delete[](name);
+	//	}
+	//}
+	std::shared_ptr<GameEntity> gameEntity = std::make_shared<GameEntity>(shapes.at(0), materials.at(4), "Floor");
+	gameEntity->GetTransform()->SetPosition(0, -2, 0);
+	gameEntity->GetTransform()->SetScale(15, 1, 15);
+	gameEntity->GetMaterial()->SetUVScale(XMFLOAT2(15,15));
+	gameEntities.push_back(gameEntity);
+	gameEntity = std::make_shared<GameEntity>(shapes.at(2), materials.at(2), "Helix");
+	gameEntities.push_back(gameEntity);
+	gameEntity = std::make_shared<GameEntity>(shapes.at(0), materials.at(0), "Cube");
+	gameEntity->GetTransform()->SetPosition(3,0,6);
+	gameEntities.push_back(gameEntity);
+	gameEntity = std::make_shared<GameEntity>(shapes.at(1), materials.at(3), "Cylinder");
+	gameEntities.push_back(gameEntity);
 
 	// Create lights
 	lights = std::vector<Light>();
@@ -378,7 +466,7 @@ void Game::CreateElements()
 	light.Type = LIGHT_TYPE_DIRECTIONAL;
 	light.Color = XMFLOAT3(1,1,1);
 	light.Intensity = 1.0f;
-	light.Direction = XMFLOAT3(0, 0, 1);
+	light.Direction = XMFLOAT3(1, -1, 0);
 	lights.push_back(light);
 
 	for (int i = 1; i <= MAX_LIGHTS-1; i++) {
@@ -394,6 +482,47 @@ void Game::CreateElements()
 		lights.push_back(light);
 	}
 	numLights = 1;
+}
+
+XMFLOAT4X4 Game::LightView(Light light)
+{
+	XMVECTOR up = XMVectorSet(0, 1, 0, 0);
+	// See if the direction is directly down
+	uint32_t CR;
+	XMVectorEqualR(&CR, XMVector3Normalize(XMLoadFloat3(&light.Direction)), XMVectorSet(0, -1, 0, 0));
+	if (XMComparisonAllTrue(CR)) {
+		up = XMVectorSet(1, 0, 0, 0);
+	}
+	XMMATRIX lightView = XMMatrixLookToLH(
+		XMLoadFloat3(&light.Direction) * -20.0f, // Position: "Backing up" 20 units from origin
+		XMLoadFloat3(&light.Direction), // Direction: light's direction
+		up); // Up: World up vector (Y axis)
+	XMFLOAT4X4 matrix;
+	XMStoreFloat4x4(&matrix, lightView);
+	return matrix;
+}
+
+XMFLOAT4X4 Game::LightProjection(Light light, float lightProjectionSize)
+{
+	XMMATRIX lightProjection = XMMatrixSet(	
+		0,0,0,0,
+		0,0,0,0,
+		0,0,0,0,
+		0,0,0,0);
+	switch (light.Type) {
+	case LIGHT_TYPE_DIRECTIONAL:
+		XMMATRIX lightProjection = XMMatrixOrthographicLH(
+			lightProjectionSize,
+			lightProjectionSize,
+			1.0f, // nearclip
+			100.0f); // farclip
+		break;
+	case LIGHT_TYPE_SPOT: break;
+	case LIGHT_TYPE_POINT: break;
+	}
+	XMFLOAT4X4 matrix;
+	XMStoreFloat4x4(&matrix, lightProjection);
+	return matrix;
 }
 
 
@@ -422,16 +551,23 @@ void Game::Update(float deltaTime, float totalTime)
 	
 	colorGradient = ColorMath::HSLtoRGB(std::fmod(totalTime, 10.0f)/10.0f, 1.0f, 0.5f);
 
-	// Move game entities
-	for (unsigned int i = 0; i < gameEntities.size(); i++) {
-		gameEntities.at(i)->GetTransform()->Rotate(0.0f, deltaTime * 1.0f, 0.0f);
-		if (gameEntities.at(i)->GetMaterial()->GetName() == "Custom Shader") {
-			gameEntities.at(i)->GetMaterial()->SetColor(XMFLOAT4(colorGradient.x, colorGradient.y, colorGradient.z, 1.0f));
-		}
-	}
+	//// Move game entities
+	//for (unsigned int i = 0; i < gameEntities.size(); i++) {
+	//	gameEntities.at(i)->GetTransform()->Rotate(0.0f, deltaTime * 1.0f, 0.0f);
+	//	if (gameEntities.at(i)->GetMaterial()->GetName() == "Custom Shader") {
+	//		gameEntities.at(i)->GetMaterial()->SetColor(XMFLOAT4(colorGradient.x, colorGradient.y, colorGradient.z, 1.0f));
+	//	}
+	//}
+	gameEntities[1]->GetTransform()->SetPosition(0, sinf(totalTime) * 3 + 2, 6);
+	gameEntities[2]->GetTransform()->Rotate(0, deltaTime, 0);
+	gameEntities[3]->GetTransform()->SetPosition(sinf(totalTime*3) * 5 - 2, 3, 3);
 
 	// Update Camera
 	cameras[selectedCamera]->Update(deltaTime);
+
+	// Update light matrices
+	lightViewMatrix = LightView(lights[0]);
+	lightProjectionMatrix = LightProjection(lights[0], 16);
 }
 
 
@@ -440,6 +576,57 @@ void Game::Update(float deltaTime, float totalTime)
 // --------------------------------------------------------
 void Game::Draw(float deltaTime, float totalTime)
 {
+	// Shadow map
+	{
+		// Clear depth stencil
+		Graphics::Context->ClearDepthStencilView(shadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+		// Change target depth stencil and unbind back buffer
+		ID3D11RenderTargetView* nullRTV{};
+		Graphics::Context->OMSetRenderTargets(1, &nullRTV, shadowDSV.Get());
+
+		// Deactivate pixel shader
+		Graphics::Context->PSSetShader(0, 0, 0);
+
+		// Change the viewport
+		D3D11_VIEWPORT viewport = {};
+		viewport.Width = (float)shadowMapResolution; // matches shadow map
+		viewport.Height = (float)shadowMapResolution;
+		viewport.MaxDepth = 1.0f;
+		Graphics::Context->RSSetViewports(1, &viewport);
+
+		// Render Enities
+		Graphics::Context->VSSetShader(shadowVS.Get(), 0, 0);
+		struct ShadowVSData
+		{
+			XMFLOAT4X4 world;
+			XMFLOAT4X4 view;
+			XMFLOAT4X4 proj;
+		};
+		ShadowVSData vsData = {};
+		vsData.view = lightViewMatrix;
+		vsData.proj = lightProjectionMatrix;
+		// Loop and draw all entities
+		for (auto& e : gameEntities)
+		{
+			vsData.world = e->GetTransform()->GetWorldMatrix();
+			Graphics::FillAndBindNextConstantBuffer(&vsData, sizeof(ShadowVSData), D3D11_VERTEX_SHADER, 0); // Shortened for space
+			e->Draw();
+		}
+
+		// Reset viewpoty
+		viewport.Width = Window::Width();
+		viewport.Height = Window::Height();
+		Graphics::Context->RSSetViewports(1, &viewport);
+
+		// Rebind correct back and depth buffer
+		Graphics::Context->OMSetRenderTargets(
+			1,
+			Graphics::BackBufferRTV.GetAddressOf(),
+			Graphics::DepthBufferDSV.Get());
+
+	}
+
 	// Frame START
 	// - These things should happen ONCE PER FRAME
 	// - At the beginning of Game::Draw() before drawing *anything*
@@ -731,6 +918,9 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 			}
 		}
 		ImGui::TreePop();
+	}
+	if (ImGui::TreeNode("Shadow Map")) {
+		ImGui::Image(shadowSRV.Get(), ImVec2(512, 512));
 	}
 	ImGui::End();
 }
