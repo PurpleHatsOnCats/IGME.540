@@ -3,6 +3,7 @@
 Texture2D AlbedoTexture : register(t0); // "t" registers for textures
 Texture2D RoughnessTexture : register(t1); // "t" registers for textures
 Texture2D MetalTexture : register(t2); // "t" registers for textures
+
 SamplerState BasicSampler : register(s0); // "s" registers for samplers
 
 cbuffer ExternalData : register(b0)

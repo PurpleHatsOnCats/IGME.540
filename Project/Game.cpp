@@ -62,7 +62,7 @@ Game::Game()
 
 	// Create Cameras
 	cameras = std::vector<std::shared_ptr<Camera>>();
-	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-1), XMConvertToRadians(90.0f), 0.01f, 100.0f, "Main Camera"));
+	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,3,-6), XMConvertToRadians(90.0f), 0.01f, 100.0f, "Main Camera"));
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(-2,2,-3), XMConvertToRadians(45.0f), 0.01f, 100.0f, "Second Camera"));
 	cameras.push_back(std::make_shared<Camera>(Window::AspectRatio(), XMFLOAT3(0,0,-70), XMConvertToRadians(70.0f), 0.01f, 100.0f, "Other Camera"));
 	
@@ -109,6 +109,25 @@ void Game::CreateShadowMap()
 		shadowTexture.Get(),
 		&srvDesc,
 		shadowSRV.GetAddressOf());
+	
+	// Create rasterizer
+	D3D11_RASTERIZER_DESC shadowRastDesc = {};
+	shadowRastDesc.FillMode = D3D11_FILL_SOLID;
+	shadowRastDesc.CullMode = D3D11_CULL_BACK;
+	shadowRastDesc.DepthClipEnable = false; // Keep out-of-frustum objects!
+	shadowRastDesc.DepthBias = 1000; // Min. precision units, not world units!
+	shadowRastDesc.SlopeScaledDepthBias = 1.0f; // Bias more based on slope
+	Graphics::Device->CreateRasterizerState(&shadowRastDesc, &shadowRasterizer);
+
+	// Create sampler
+	D3D11_SAMPLER_DESC shadowSampDesc = {};
+	shadowSampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+	shadowSampDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
+	shadowSampDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+	shadowSampDesc.BorderColor[0] = 1.0f; // Only need the first component
+	Graphics::Device->CreateSamplerState(&shadowSampDesc, &shadowSampler);
 }
 
 // --------------------------------------------------------
@@ -363,7 +382,7 @@ void Game::CreateElements()
 	ComPtr<ID3D11VertexShader> vertexShader = LoadVertexShader(L"VertexShader.cso");
 	ComPtr<ID3D11VertexShader> vertexShaderNormals = LoadVertexShader(L"NormalMappingVS.cso");
 	ComPtr<ID3D11VertexShader> vsSky = LoadVertexShader(L"SkyVS.cso");
-	ComPtr<ID3D11VertexShader> shadowVS = LoadVertexShader(L"ShadowVS.cso");
+	shadowVS = LoadVertexShader(L"ShadowVS.cso");
 
 	ComPtr<ID3D11PixelShader> pixelShader = LoadPixelShader(L"PixelShader.cso");
 	ComPtr<ID3D11PixelShader> debugUVsPSShader = LoadPixelShader(L"DebugUVsPS.cso");
@@ -454,7 +473,7 @@ void Game::CreateElements()
 	gameEntity = std::make_shared<GameEntity>(shapes.at(2), materials.at(2), "Helix");
 	gameEntities.push_back(gameEntity);
 	gameEntity = std::make_shared<GameEntity>(shapes.at(0), materials.at(0), "Cube");
-	gameEntity->GetTransform()->SetPosition(3,0,6);
+	gameEntity->GetTransform()->SetPosition(3,0,0);
 	gameEntities.push_back(gameEntity);
 	gameEntity = std::make_shared<GameEntity>(shapes.at(1), materials.at(3), "Cylinder");
 	gameEntities.push_back(gameEntity);
@@ -466,7 +485,7 @@ void Game::CreateElements()
 	light.Type = LIGHT_TYPE_DIRECTIONAL;
 	light.Color = XMFLOAT3(1,1,1);
 	light.Intensity = 1.0f;
-	light.Direction = XMFLOAT3(1, -1, 0);
+	light.Direction = XMFLOAT3(0, -1, 1);
 	lights.push_back(light);
 
 	for (int i = 1; i <= MAX_LIGHTS-1; i++) {
@@ -511,7 +530,7 @@ XMFLOAT4X4 Game::LightProjection(Light light, float lightProjectionSize)
 		0,0,0,0);
 	switch (light.Type) {
 	case LIGHT_TYPE_DIRECTIONAL:
-		XMMATRIX lightProjection = XMMatrixOrthographicLH(
+		lightProjection = XMMatrixOrthographicLH(
 			lightProjectionSize,
 			lightProjectionSize,
 			1.0f, // nearclip
@@ -558,16 +577,18 @@ void Game::Update(float deltaTime, float totalTime)
 	//		gameEntities.at(i)->GetMaterial()->SetColor(XMFLOAT4(colorGradient.x, colorGradient.y, colorGradient.z, 1.0f));
 	//	}
 	//}
-	gameEntities[1]->GetTransform()->SetPosition(0, sinf(totalTime) * 3 + 2, 6);
-	gameEntities[2]->GetTransform()->Rotate(0, deltaTime, 0);
-	gameEntities[3]->GetTransform()->SetPosition(sinf(totalTime*3) * 5 - 2, 3, 3);
-
+	if (!freezeEntities) {
+		gameEntities[1]->GetTransform()->SetPosition(0, sinf(totalTime) * 3 + 2, 0);
+		gameEntities[2]->GetTransform()->Rotate(0, deltaTime, 0);
+		gameEntities[3]->GetTransform()->SetPosition(sinf(totalTime * 3) * 5 - 2, 3, 0);
+	}
+	
 	// Update Camera
 	cameras[selectedCamera]->Update(deltaTime);
 
 	// Update light matrices
 	lightViewMatrix = LightView(lights[0]);
-	lightProjectionMatrix = LightProjection(lights[0], 16);
+	lightProjectionMatrix = LightProjection(lights[0], shadowMapSize);
 }
 
 
@@ -595,26 +616,36 @@ void Game::Draw(float deltaTime, float totalTime)
 		viewport.MaxDepth = 1.0f;
 		Graphics::Context->RSSetViewports(1, &viewport);
 
-		// Render Enities
+		// Set Vertex Shader
 		Graphics::Context->VSSetShader(shadowVS.Get(), 0, 0);
+
+		// Render Enities
 		struct ShadowVSData
 		{
 			XMFLOAT4X4 world;
 			XMFLOAT4X4 view;
 			XMFLOAT4X4 proj;
 		};
+
 		ShadowVSData vsData = {};
 		vsData.view = lightViewMatrix;
 		vsData.proj = lightProjectionMatrix;
+
+		// Set rasterizer
+		Graphics::Context->RSSetState(shadowRasterizer.Get());
+
 		// Loop and draw all entities
 		for (auto& e : gameEntities)
 		{
 			vsData.world = e->GetTransform()->GetWorldMatrix();
 			Graphics::FillAndBindNextConstantBuffer(&vsData, sizeof(ShadowVSData), D3D11_VERTEX_SHADER, 0); // Shortened for space
-			e->Draw();
+			e->GetMesh()->Draw();
 		}
 
-		// Reset viewpoty
+		// Unset rasterizer
+		Graphics::Context->RSSetState(0);
+
+		// Reset viewport
 		viewport.Width = Window::Width();
 		viewport.Height = Window::Height();
 		Graphics::Context->RSSetViewports(1, &viewport);
@@ -624,7 +655,6 @@ void Game::Draw(float deltaTime, float totalTime)
 			1,
 			Graphics::BackBufferRTV.GetAddressOf(),
 			Graphics::DepthBufferDSV.Get());
-
 	}
 
 	// Frame START
@@ -647,12 +677,19 @@ void Game::Draw(float deltaTime, float totalTime)
 		pixelShaderData.numLights = numLights;
 		Light* lightsArray = lights.data();
 		memcpy(&pixelShaderData.lights, lightsArray, sizeof(Light) * numLights);
+
+		vertexShaderData.lightProjection = lightProjectionMatrix;
+		vertexShaderData.lightView = lightViewMatrix;
 	}
 
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
 	{
+		// Bind shadow map
+		Graphics::Context->PSSetShaderResources(4, 1, shadowSRV.GetAddressOf());
+		Graphics::Context->PSSetSamplers(1, 1, shadowSampler.GetAddressOf());
+
 		for (unsigned int i = 0; i < gameEntities.size(); i++) {
 			// Update vertex shader data
 			vertexShaderData.world = gameEntities.at(i)->GetTransform()->GetWorldMatrix();
@@ -675,7 +712,6 @@ void Game::Draw(float deltaTime, float totalTime)
 				D3D11_PIXEL_SHADER,
 				0
 			);
-
 			gameEntities.at(i)->GetMaterial()->BindTexturesAndSamplers();
 			gameEntities.at(i)->Draw();
 		}
@@ -691,6 +727,10 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		ImGui::Render(); // Turns this frame’s UI into renderable triangles
 		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // Draws it to the screen
+
+		// Unbind all SRVs
+		ID3D11ShaderResourceView* nullSRVs[128] = {};
+		Graphics::Context->PSSetShaderResources(0, 128, nullSRVs);
 	}
 
 	// Frame END
@@ -804,6 +844,7 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 		ImGui::TreePop();
 	}
 	if (ImGui::TreeNode("Game Entities")) {
+		ImGui::Checkbox("Freeze entities", &freezeEntities);
 		for (unsigned int i = 0; i < gameEntities.size(); i++) {
 			if (ImGui::TreeNode(gameEntities.at(i)->GetName())) {
 				XMFLOAT3 position = gameEntities.at(i)->GetTransform()->GetPosition();
@@ -920,7 +961,10 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 		ImGui::TreePop();
 	}
 	if (ImGui::TreeNode("Shadow Map")) {
-		ImGui::Image(shadowSRV.Get(), ImVec2(512, 512));
+		//ImGui::DragInt("Map Resolution", &shadowMapResolution,1, 64, 4048);
+		ImGui::DragFloat("Map Size", &shadowMapSize, 1.0f, 1.0f, 128.0f);
+		ImGui::Image(shadowSRV.Get(), ImVec2(256, 256));
+		ImGui::TreePop();
 	}
 	ImGui::End();
 }

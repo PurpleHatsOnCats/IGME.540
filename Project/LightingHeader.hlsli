@@ -29,6 +29,7 @@ struct V2PTangent
     float3 normal : NORMAL;
     float3 worldPosition : POSITION;
     float3 tangent : TANGENT;
+    float4 shadowMapPos : SHADOW_POSITION;
 };
 
 // Struct representing a single vertex worth of data
@@ -170,29 +171,31 @@ float4 spotLight(float3 normal, float3 dirToCamera, float roughness, float3 f0, 
     return pointTerm * saturate((cosOuter - pixelAngle) / falloffRange);
 }
 float4 calculateLight(float3 normal, float3 dirToCamera, float roughness, float3 f0, float metal, float3 worldPosition, float4 surfaceColor, int numLights, 
-    Light lights[MAX_LIGHTS], float3 ambientColor)
+    Light lights[MAX_LIGHTS], float shadowAmount)
 {
     float4 c = float4(0, 0, 0, 0);
+    float4 lightAmount = float4(0, 0, 0, 0);
     
     for (int i = 0; i < numLights; i++)
     {
         switch (lights[i].Type)
         {
             case LIGHT_TYPE_DIRECTIONAL:
-                c += directionalLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor);
+                lightAmount = directionalLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor);
                 break;
             case LIGHT_TYPE_POINT:
-                c += pointLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor, worldPosition);
+                lightAmount = pointLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor, worldPosition);
                 break;
             case LIGHT_TYPE_SPOT:
-                c += spotLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor, worldPosition);
+                lightAmount = spotLight(normal, dirToCamera, roughness, f0, metal, lights[i], surfaceColor, worldPosition);
                 break;
         }
+        if (i == 0)
+        {
+            lightAmount *= shadowAmount;
+        }
+        c += lightAmount;
     }
-    
-    // Ambient
-    //c += float4(ambientColor, 1) * surfaceColor;
-    // No specular constant yet...
     
     return c;
 }

@@ -4,7 +4,9 @@ Texture2D AlbedoTexture : register(t0); // "t" registers for textures
 Texture2D RoughnessTexture : register(t1); // "t" registers for textures
 Texture2D MetalTexture : register(t2); // "t" registers for textures
 Texture2D NormalTexture : register(t3); // "t" registers for textures
+Texture2D ShadowMap : register(t4);
 SamplerState BasicSampler : register(s0); // "s" registers for samplers
+SamplerComparisonState ShadowSampler : register(s1);
 
 cbuffer ExternalData : register(b0)
 {
@@ -49,6 +51,11 @@ float4 main(V2PTangent input) : SV_TARGET
     // because of linear texture sampling, so we lerp the specular color to match
     float3 specularColor = lerp(0.04f, albedoColor.rgb, metal);
     
-    return pow(calculateLight(normal, dirToCamera, roughness, specularColor, metal, input.worldPosition, albedoColor, numLights, lights, ambientColor), 1.0 / 2.2);
+    // shadow map comparison
+    input.shadowMapPos /= input.shadowMapPos.w;
+    float2 shadowUV = input.shadowMapPos.xy * 0.5f + 0.5f;
+    shadowUV.y = 1 - shadowUV.y; // Flip the Y
+    float shadowAmount = ShadowMap.SampleCmpLevelZero(ShadowSampler, shadowUV, input.shadowMapPos.z);
+    return pow(calculateLight(normal, dirToCamera, roughness, specularColor, metal, input.worldPosition, albedoColor, numLights, lights, shadowAmount), 1.0 / 2.2);
 }
 

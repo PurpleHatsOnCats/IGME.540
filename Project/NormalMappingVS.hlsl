@@ -6,6 +6,8 @@ cbuffer ExternalData : register(b0)
     float4x4 worldInvTranspose;
     float4x4 view;
     float4x4 projection;
+    float4x4 lightView;
+    float4x4 lightProjection;
 }
 
 // --------------------------------------------------------
@@ -35,6 +37,9 @@ V2PTangent main(VertexShaderInput input)
     output.normal = mul((float3x3) worldInvTranspose, input.normal);
     output.texCoord = input.texCoord;
     output.tangent = mul((float3x3) world, input.tangent);
+    
+    matrix shadowProjection = mul(lightProjection, mul(lightView, world));
+    output.shadowMapPos = mul(shadowProjection, float4(input.localPosition,1));
 	
 	// Whatever we return will make its way through the pipeline to the
 	// next programmable stage we're using (the pixel shader for now)

@@ -51,6 +51,9 @@ private:
 	float backgroundColor[4];
 	bool showDemo;
 	int sliderValue = 0;
+
+	bool freezeEntities = false;
+
 	VertexShaderExternalData vertexShaderData;
 	PixelShaderExternalData pixelShaderData;
 	VertexShaderExternalDataSky vertexShaderDataSky;
@@ -59,6 +62,7 @@ private:
 	std::vector<std::shared_ptr<Material>> materials;
 	std::vector<std::shared_ptr<GameEntity>> gameEntities;
 	std::vector<std::shared_ptr<Camera>> cameras;
+
 	int selectedCamera = 0;
 
 	XMFLOAT3 colorGradient;
@@ -76,5 +80,6 @@ private:
 	DirectX::XMFLOAT4X4 lightProjectionMatrix;
 	ComPtr<ID3D11VertexShader> shadowVS;
 	int shadowMapResolution;
+	float shadowMapSize = 15.0f;
 };
 
