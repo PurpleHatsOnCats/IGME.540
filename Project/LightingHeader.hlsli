@@ -53,7 +53,7 @@ struct VertexShaderInput
 #define LIGHT_TYPE_DIRECTIONAL 0
 #define LIGHT_TYPE_POINT 1
 #define LIGHT_TYPE_SPOT 2
-#define MAX_LIGHTS 30
+#define MAX_LIGHTS 15
 #define MIN_ROUGHNESS 0.0000001
 
 struct Light

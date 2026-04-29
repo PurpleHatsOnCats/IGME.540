@@ -1,10 +1,9 @@
 #pragma once
 #include <DirectXMath.h>
 #include "Lights.h"
-#define MAX_LIGHTS 30
+#define MAX_LIGHTS 15
 
 struct VertexShaderExternalData {
-public:
 	DirectX::XMFLOAT4X4 world;
 	DirectX::XMFLOAT4X4 worldInvTranspose;
 	DirectX::XMFLOAT4X4 view;
@@ -14,7 +13,6 @@ public:
 	
 };
 struct PixelShaderExternalData {
-public:
 	DirectX::XMFLOAT4 colorTint;
 	DirectX::XMFLOAT2 UVScale;
 	DirectX::XMFLOAT2 UVOffset;
@@ -25,7 +23,11 @@ public:
 	Light lights[MAX_LIGHTS];
 };
 struct VertexShaderExternalDataSky {
-public:
 	DirectX::XMFLOAT4X4 view;
 	DirectX::XMFLOAT4X4 projection;
+};
+struct BlurData {
+	int radius;
+	float pixelWidth;
+	float pixelHeight;
 };

@@ -32,6 +32,7 @@ private:
 	
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
 	void CreateShadowMap();
+	void CreatePostProcessResources();
 	ComPtr<ID3D11VertexShader> LoadVertexShader(std::wstring);
 	ComPtr<ID3D11PixelShader> LoadPixelShader(std::wstring);
 	void CreateElements();
@@ -81,5 +82,16 @@ private:
 	ComPtr<ID3D11VertexShader> shadowVS;
 	int shadowMapResolution;
 	float shadowMapSize = 15.0f;
+
+	// Resources that are shared among all post processes
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> ppSampler;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> ppVS;
+	// Resources that are tied to a particular post process
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> blurPS;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> blurRTV; // For rendering
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> blurSRV; // For sampling
+
+	BlurData blurData = {};
+	XMFLOAT3 clearColor = XMFLOAT3(0, 0, 0);
 };
 
