@@ -42,7 +42,8 @@ float4 main(V2PTangent input) : SV_TARGET
     // Note the use of lerp here - metal is generally 0 or 1, but might be in between
     // because of linear texture sampling, so we lerp the specular color to match
     float3 specularColor = lerp(0.04f, albedoColor.rgb, metal);
+    float shadowAmount = 0;
  
-    return pow(calculateLight(normal, dirToCamera, roughness, specularColor, metal, input.worldPosition, albedoColor, numLights, lights, ambientColor), 1.0 / 2.2);
+    return pow(calculateLight(normal, dirToCamera, roughness, specularColor, metal, input.worldPosition, albedoColor, numLights, lights, shadowAmount), 1.0 / 2.2);
 }
 

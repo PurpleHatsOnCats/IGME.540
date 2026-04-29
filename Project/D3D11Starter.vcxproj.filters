@@ -196,6 +196,9 @@
     <FxCompile Include="PPBlurPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="PPColorAberrationPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="LightingHeader.hlsli">

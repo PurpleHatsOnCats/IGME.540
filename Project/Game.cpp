@@ -157,25 +157,40 @@ void Game::CreatePostProcessResources()
 	textureDesc.Usage = D3D11_USAGE_DEFAULT;
 
 	// Create the resource (no need to track it after the views are created below)
-	Microsoft::WRL::ComPtr<ID3D11Texture2D> ppTexture;
-	Graphics::Device->CreateTexture2D(&textureDesc, 0, ppTexture.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> blurTexture;
+	Graphics::Device->CreateTexture2D(&textureDesc, 0, blurTexture.GetAddressOf());
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> aberrationTexture;
+	Graphics::Device->CreateTexture2D(&textureDesc, 0, aberrationTexture.GetAddressOf());
 
-	// Create the Render Target View
+	// Create the Render Target View (blur)
 	D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {}; // creates default SRV with no restrictions
 	rtvDesc.Format = textureDesc.Format;
 	rtvDesc.Texture2D.MipSlice = 0;
 	rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 	Graphics::Device->CreateRenderTargetView(
-		ppTexture.Get(),
+		blurTexture.Get(),
 		&rtvDesc,
 		blurRTV.ReleaseAndGetAddressOf());
 	// Create the Shader Resource View
 	// By passing it a null description for the SRV, we
 	// get a "default" SRV that has access to the entire resource
 	Graphics::Device->CreateShaderResourceView(
-		ppTexture.Get(),
+		blurTexture.Get(),
 		0,
 		blurSRV.ReleaseAndGetAddressOf());
+
+	// Create the Render Target View (aberration)
+	Graphics::Device->CreateRenderTargetView(
+		aberrationTexture.Get(),
+		&rtvDesc,
+		aberrationRTV.ReleaseAndGetAddressOf());
+	// Create the Shader Resource View
+	// By passing it a null description for the SRV, we
+	// get a "default" SRV that has access to the entire resource
+	Graphics::Device->CreateShaderResourceView(
+		aberrationTexture.Get(),
+		0,
+		aberrationSRV.ReleaseAndGetAddressOf());
 }
 
 // --------------------------------------------------------
@@ -441,6 +456,7 @@ void Game::CreateElements()
 	ComPtr<ID3D11PixelShader> pixelShaderNormals = LoadPixelShader(L"NormalMappingPS.cso");
 	ComPtr<ID3D11PixelShader> psSky = LoadPixelShader(L"SkyPS.cso");
 	blurPS = LoadPixelShader(L"PPBlurPS.cso");
+	aberrationPS = LoadPixelShader(L"PPColorAberrationPS.cso");
 
 	// Create Materials
 	materials = std::vector<std::shared_ptr<Material>>();
@@ -699,8 +715,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->RSSetState(0);
 
 		// Reset viewport
-		viewport.Width = Window::Width();
-		viewport.Height = Window::Height();
+		viewport.Width = (float)Window::Width();
+		viewport.Height = (float)Window::Height();
 		Graphics::Context->RSSetViewports(1, &viewport);
 
 		// Rebind correct back and depth buffer
@@ -783,10 +799,10 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - These should happen exactly ONCE PER FRAME
 	// - At the very end of the frame (after drawing *everything*)
 	{
-		// Bind Back Buffer
+		// Bind next pp
 		Graphics::Context->OMSetRenderTargets(
 			1,
-			Graphics::BackBufferRTV.GetAddressOf(),
+			aberrationRTV.GetAddressOf(),
 			0);
 
 		// Activate shaders and bind resources
@@ -801,6 +817,28 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::FillAndBindNextConstantBuffer(
 			&blurData,
 			sizeof(BlurData),
+			D3D11_PIXEL_SHADER,
+			0
+		);
+
+		Graphics::Context->Draw(3, 0); // Draw exactly 3 vertices (one triangle)
+
+		// Bind Back Buffer
+		Graphics::Context->OMSetRenderTargets(
+			1,
+			Graphics::BackBufferRTV.GetAddressOf(),
+			0);
+
+		// Activate shaders and bind resources
+		//Graphics::Context->VSSetShader(ppVS.Get(), 0, 0);
+		Graphics::Context->PSSetShader(aberrationPS.Get(), 0, 0);
+		Graphics::Context->PSSetShaderResources(0, 1, aberrationSRV.GetAddressOf());
+		Graphics::Context->PSSetSamplers(0, 1, ppSampler.GetAddressOf());
+
+		// Also set any required cbuffer data here! 
+		Graphics::FillAndBindNextConstantBuffer(
+			&aberrationData,
+			sizeof(AberrationData),
 			D3D11_PIXEL_SHADER,
 			0
 		);
@@ -1046,6 +1084,12 @@ void Game::BuildUI(float deltaTime, float totalTime) {
 	if (ImGui::TreeNode("Post Processes")) {
 		if(ImGui::TreeNode("Blur")) {
 			ImGui::SliderInt("Radius", &blurData.radius, 0, 8);
+			ImGui::TreePop();
+		}
+		if(ImGui::TreeNode("Color Aberration")) {
+			ImGui::SliderFloat2("Red Offset", &aberrationData.redOffset.x, -0.05f, 0.05f);
+			ImGui::SliderFloat2("Green Offset", &aberrationData.greenOffset.x, -0.05f, 0.05f);
+			ImGui::SliderFloat2("Blue Offset", &aberrationData.blueOffset.x, -0.05f, 0.05f);
 			ImGui::TreePop();
 		}
 		ImGui::TreePop();

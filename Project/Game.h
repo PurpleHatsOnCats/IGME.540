@@ -90,8 +90,12 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> blurPS;
 	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> blurRTV; // For rendering
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> blurSRV; // For sampling
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> aberrationPS;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> aberrationRTV; // For rendering
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> aberrationSRV; // For sampling
 
 	BlurData blurData = {};
+	AberrationData aberrationData = {};
 	XMFLOAT3 clearColor = XMFLOAT3(0, 0, 0);
 };
 

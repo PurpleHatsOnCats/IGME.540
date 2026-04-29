@@ -31,3 +31,8 @@ struct BlurData {
 	float pixelWidth;
 	float pixelHeight;
 };
+struct AberrationData {
+	XMFLOAT2 redOffset;
+	XMFLOAT2 greenOffset;
+	XMFLOAT2 blueOffset;
+};
